@@ -1,0 +1,62 @@
+name: colorless
+version: '0.0.1'
+category: Web
+synopsis: Colorless
+description: Colorless
+maintainer: Joe Vargas
+extra-source-files:
+- package.yaml
+- README.md
+ghc-options: -Wall
+default-extensions:
+- ConstraintKinds
+- DeriveGeneric
+- DuplicateRecordFields
+- FlexibleContexts
+- FlexibleInstances
+- GADTs
+- GeneralizedNewtypeDeriving
+- KindSignatures
+- LambdaCase
+- MultiParamTypeClasses
+- NamedFieldPuns
+- OverloadedStrings
+- RankNTypes
+- ScopedTypeVariables
+- TypeApplications
+- TypeOperators
+library:
+  dependencies:
+  - aeson
+  - base
+  - bytestring
+  - containers
+  - errors
+  - exceptions
+  - lifted-async
+  - monad-control
+  - monad-logger
+  - mtl
+  - path-pieces
+  - persistent
+  - persistent-template
+  - random
+  - text
+  - unordered-containers
+  - vector
+  source-dirs: library
+tests:
+  colorless-suite:
+    dependencies:
+    - aeson
+    - base
+    - colorless
+    - containers
+    - hspec
+    - text
+    ghc-options:
+    - -rtsopts
+    - -threaded
+    - -with-rtsopts=-N
+    main: Spec.hs
+    source-dirs: tests
