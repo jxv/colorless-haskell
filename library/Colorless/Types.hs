@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Colorless.Types
-  ( ApiVersion(..)
+  ( Version(..)
   , Request(..)
   , Response(..)
   , ResponseError(..)
@@ -19,23 +19,25 @@ import Data.Text (Text)
 import Data.Aeson.Types (Parser)
 import GHC.Generics
 
-data ApiVersion = ApiVersion
+data Version = Version
   { major :: Int
   , minor :: Int
   } deriving (Show, Eq, Generic)
 
-instance ToJSON ApiVersion
-instance FromJSON ApiVersion
+instance ToJSON Version
+instance FromJSON Version
 
 data Request m c = Request
-  { version :: ApiVersion
+  { colorless :: Version
+  , version :: Version
   , meta :: m
   , calls :: [c]
   } deriving (Show, Eq)
 
 instance (FromJSON m, FromJSON c) => FromJSON (Request m c) where
   parseJSON (Object o) = Request
-    <$> o .: "version"
+    <$> o .: "colorless"
+    <*> o .: "version"
     <*> o .: "meta"
     <*> o .: "calls"
   parseJSON _ = mzero

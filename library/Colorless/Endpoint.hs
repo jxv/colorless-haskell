@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 module Colorless.Endpoint
-  ( colorless
+  ( runColorless
   ) where
 
 import Control.Monad.IO.Class (MonadIO(..))
@@ -9,12 +9,12 @@ import Data.Aeson
 import Data.Aeson.Types (parseMaybe)
 import Colorless.Types
 
-colorless
+runColorless
   :: (MonadIO m, FromJSON meta, FromJSON call, ToJSON a, RuntimeThrower m)
   => (Request meta call -> m a)
   -> Value
   -> m Value
-colorless handleRequest v = case parseRequest v of
+runColorless handleRequest v = case parseRequest v of
   Nothing -> runtimeThrow RuntimeError'UnparsableFormat
   Just req -> toJSON <$> handleRequest req
 
