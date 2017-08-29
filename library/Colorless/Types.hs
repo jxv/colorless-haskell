@@ -50,6 +50,12 @@ data RuntimeError
   | RuntimeError'IncompatibleType
   | RuntimeError'TooFewArguments
   | RuntimeError'TooManyArguments
+  | RuntimeError'NoApiVersion
+  | RuntimeError'NoColorlessVersion
+  | RuntimeError'ApiVersionTooLow
+  | RuntimeError'ApiVersionTooHigh
+  | RuntimeError'ColorlessVersionTooLow
+  | RuntimeError'ColorlessVersionTooHigh
   deriving (Show, Eq)
 
 instance ToJSON RuntimeError where
@@ -61,6 +67,12 @@ instance ToJSON RuntimeError where
     RuntimeError'IncompatibleType -> object [ "e" .= String "IncompatibleType" ]
     RuntimeError'TooFewArguments -> object [ "e" .= String "TooFewArguments" ]
     RuntimeError'TooManyArguments -> object [ "e" .= String "TooManyArguments" ]
+    RuntimeError'NoApiVersion -> object [ "e" .= String "NoApiVersion" ]
+    RuntimeError'NoColorlessVersion -> object [ "e" .= String "NoColorlessVersion" ]
+    RuntimeError'ApiVersionTooHigh -> object [ "e" .= String "ApiVersionTooHigh" ]
+    RuntimeError'ApiVersionTooLow -> object [ "e" .= String "ApiVersionTooLow" ]
+    RuntimeError'ColorlessVersionTooHigh -> object [ "e" .= String "ColorlessVersionTooHigh" ]
+    RuntimeError'ColorlessVersionTooLow -> object [ "e" .= String "ColorlessVersionTooLow" ]
 
 data ResponseError
   = ResponseError'Service Value
