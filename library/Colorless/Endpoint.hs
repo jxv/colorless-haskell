@@ -38,12 +38,12 @@ runColorless handleRequestMap v = do
       Nothing -> runtimeThrow RuntimeError'NoImplementation
       Just (minMajor, maxMajor) ->
         if minMajor > apiMajor
-          then runtimeThrow RuntimeError'ApiVersionTooLow
+          then runtimeThrow RuntimeError'ApiMajorVersionTooLow
           else if maxMajor < apiMajor
-            then runtimeThrow RuntimeError'ApiVersionTooHigh
+            then runtimeThrow RuntimeError'ApiMajorVersionTooHigh
             else runtimeThrow RuntimeError'NoImplementation
-    Just (minMinor, handleRequest) -> if minor apiVersion < minMinor
-      then runtimeThrow RuntimeError'ApiVersionTooLow
+    Just (maxMinor, handleRequest) -> if minor apiVersion > maxMinor
+      then runtimeThrow RuntimeError'ApiMinorVersionTooHigh
       else case parseRequest v of
         Nothing -> runtimeThrow RuntimeError'UnparsableFormat
         Just req -> toJSON <$> handleRequest req
@@ -54,14 +54,12 @@ leastAndGreatest xs = Just (minimum xs, maximum xs)
 
 assertColorlessVersionCompatiability :: RuntimeThrower m => Version -> m ()
 assertColorlessVersionCompatiability Version{major,minor}
-  | major > mustMajor = runtimeThrow RuntimeError'ColorlessVersionTooHigh
-  | major < mustMajor = runtimeThrow RuntimeError'ColorlessVersionTooLow
-  | minor > maxMinor = runtimeThrow RuntimeError'ColorlessVersionTooHigh
-  | minor < minMinor = runtimeThrow RuntimeError'ColorlessVersionTooLow
+  | major > mustMajor = runtimeThrow RuntimeError'ColorlessMajorVersionTooHigh
+  | major < mustMajor = runtimeThrow RuntimeError'ColorlessMajorVersionTooLow
+  | minor > maxMinor = runtimeThrow RuntimeError'ColorlessMinorVersionTooHigh
   | otherwise = return ()
   where
     mustMajor = 0
-    minMinor = 0
     maxMinor = 0
 
 getApiVersion :: RuntimeThrower m => Value -> m Version

@@ -62,10 +62,12 @@ data RuntimeError
   | RuntimeError'TooManyArguments
   | RuntimeError'NoApiVersion
   | RuntimeError'NoColorlessVersion
-  | RuntimeError'ApiVersionTooLow
-  | RuntimeError'ApiVersionTooHigh
-  | RuntimeError'ColorlessVersionTooLow
-  | RuntimeError'ColorlessVersionTooHigh
+  | RuntimeError'ApiMajorVersionTooLow
+  | RuntimeError'ApiMajorVersionTooHigh
+  | RuntimeError'ApiMinorVersionTooHigh
+  | RuntimeError'ColorlessMajorVersionTooLow
+  | RuntimeError'ColorlessMajorVersionTooHigh
+  | RuntimeError'ColorlessMinorVersionTooHigh
   | RuntimeError'UnparsableMeta
   | RuntimeError'UnparsableCalls
   | RuntimeError'NoImplementation
@@ -73,22 +75,26 @@ data RuntimeError
 
 instance ToJSON RuntimeError where
   toJSON = \case
-    RuntimeError'UnparsableFormat -> object [ "e" .= String "UnparsableFormat" ]
+    RuntimeError'UnparsableFormat -> e "UnparsableFormat"
     RuntimeError'UnrecognizedCall m -> object [ "e" .= String "UnrecognizedCall", "m" .= object [ "call" .= m ] ]
-    RuntimeError'VariableLimit -> object [ "e" .= String "VariableLimit" ]
+    RuntimeError'VariableLimit -> e "VariableLimit"
     RuntimeError'UnknownVariable m -> object [ "e" .= String "UnknownVariable", "m" .= object [ "name" .= m ] ]
-    RuntimeError'IncompatibleType -> object [ "e" .= String "IncompatibleType" ]
-    RuntimeError'TooFewArguments -> object [ "e" .= String "TooFewArguments" ]
-    RuntimeError'TooManyArguments -> object [ "e" .= String "TooManyArguments" ]
-    RuntimeError'NoApiVersion -> object [ "e" .= String "NoApiVersion" ]
-    RuntimeError'NoColorlessVersion -> object [ "e" .= String "NoColorlessVersion" ]
-    RuntimeError'ApiVersionTooHigh -> object [ "e" .= String "ApiVersionTooHigh" ]
-    RuntimeError'ApiVersionTooLow -> object [ "e" .= String "ApiVersionTooLow" ]
-    RuntimeError'ColorlessVersionTooHigh -> object [ "e" .= String "ColorlessVersionTooHigh" ]
-    RuntimeError'ColorlessVersionTooLow -> object [ "e" .= String "ColorlessVersionTooLow" ]
-    RuntimeError'UnparsableMeta -> object [ "e" .= String "UnparsableMeta" ]
-    RuntimeError'UnparsableCalls -> object [ "e" .= String "UnparsableCalls" ]
-    RuntimeError'NoImplementation -> object [ "e" .= String "NoImplementation" ]
+    RuntimeError'IncompatibleType -> e "IncompatibleType"
+    RuntimeError'TooFewArguments -> e "TooFewArguments"
+    RuntimeError'TooManyArguments -> e "TooManyArguments"
+    RuntimeError'NoApiVersion -> e "NoApiVersion"
+    RuntimeError'NoColorlessVersion -> e "NoColorlessVersion"
+    RuntimeError'ApiMajorVersionTooHigh -> e "ApiMajorVersionTooHigh"
+    RuntimeError'ApiMajorVersionTooLow -> e "ApiMajorVersionTooLow"
+    RuntimeError'ApiMinorVersionTooHigh -> e "ApiMinorVersionTooHigh"
+    RuntimeError'ColorlessMajorVersionTooHigh -> e "ColorlessMajorVersionTooHigh"
+    RuntimeError'ColorlessMajorVersionTooLow -> e "ColorlessMajorVersionTooLow"
+    RuntimeError'ColorlessMinorVersionTooHigh -> e "ColorlessMinorVersionTooHigh"
+    RuntimeError'UnparsableMeta -> e "UnparsableMeta"
+    RuntimeError'UnparsableCalls -> e "UnparsableCalls"
+    RuntimeError'NoImplementation -> e "NoImplementation"
+    where
+      e s = object [ "e" .= String s ]
 
 data ResponseError
   = ResponseError'Service Value
