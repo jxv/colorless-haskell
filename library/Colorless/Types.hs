@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Colorless.Types
   ( Version(..)
+  , Major(..)
+  , Minor(..)
   , Request(..)
   , Response(..)
   , ResponseError(..)
@@ -19,26 +21,34 @@ import Data.Text (Text)
 import Data.Aeson.Types (Parser)
 import GHC.Generics
 
+newtype Major = Major Int
+  deriving (Show, Eq, Generic, Num, Ord, Real, Integral, Enum)
+
+instance FromJSON Major
+instance ToJSON Major
+
+newtype Minor = Minor Int
+  deriving (Show, Eq, Generic, Num, Ord, Real, Integral, Enum)
+
+instance FromJSON Minor
+instance ToJSON Minor
+
 data Version = Version
-  { major :: Int
-  , minor :: Int
+  { major :: Major
+  , minor :: Minor
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Version
 instance FromJSON Version
 
-data Request m c = Request
-  { colorless :: Version
-  , version :: Version
-  , meta :: m
-  , calls :: [c]
+data Request = Request
+  { meta :: Value
+  , calls :: [Value]
   } deriving (Show, Eq)
 
-instance (FromJSON m, FromJSON c) => FromJSON (Request m c) where
+instance FromJSON Request where
   parseJSON (Object o) = Request
-    <$> o .: "colorless"
-    <*> o .: "version"
-    <*> o .: "meta"
+    <$> o .: "meta"
     <*> o .: "calls"
   parseJSON _ = mzero
 
@@ -56,6 +66,9 @@ data RuntimeError
   | RuntimeError'ApiVersionTooHigh
   | RuntimeError'ColorlessVersionTooLow
   | RuntimeError'ColorlessVersionTooHigh
+  | RuntimeError'UnparsableMeta
+  | RuntimeError'UnparsableCalls
+  | RuntimeError'NoImplementation
   deriving (Show, Eq)
 
 instance ToJSON RuntimeError where
@@ -73,6 +86,9 @@ instance ToJSON RuntimeError where
     RuntimeError'ApiVersionTooLow -> object [ "e" .= String "ApiVersionTooLow" ]
     RuntimeError'ColorlessVersionTooHigh -> object [ "e" .= String "ColorlessVersionTooHigh" ]
     RuntimeError'ColorlessVersionTooLow -> object [ "e" .= String "ColorlessVersionTooLow" ]
+    RuntimeError'UnparsableMeta -> object [ "e" .= String "UnparsableMeta" ]
+    RuntimeError'UnparsableCalls -> object [ "e" .= String "UnparsableCalls" ]
+    RuntimeError'NoImplementation -> object [ "e" .= String "NoImplementation" ]
 
 data ResponseError
   = ResponseError'Service Value

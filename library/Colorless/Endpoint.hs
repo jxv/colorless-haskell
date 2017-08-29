@@ -1,29 +1,56 @@
 {-# LANGUAGE DataKinds #-}
 module Colorless.Endpoint
   ( runColorless
+  , runColorlessSingleton
   ) where
 
+import qualified Data.Map as Map
 import qualified Data.HashMap.Lazy as HML
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Concurrent.Async.Lifted ()
 import Data.Aeson
 import Data.Aeson.Types (parseMaybe)
 import Data.Text (Text)
+import Data.Map (Map)
 
 import Colorless.Types
 
-runColorless
-  :: (MonadIO m, FromJSON meta, FromJSON call, ToJSON a, RuntimeThrower m)
-  => (Request meta call -> m a)
+runColorlessSingleton
+  :: (MonadIO m, RuntimeThrower m)
+  => Version
+  -> (Request -> m Response)
   -> Value
   -> m Value
-runColorless handleRequest v = do
+runColorlessSingleton Version{major,minor} handleRequest = runColorless (Map.singleton major (minor, handleRequest))
+
+runColorless
+  :: (MonadIO m, RuntimeThrower m)
+  => Map Major (Minor, Request -> m Response)
+  -> Value
+  -> m Value
+runColorless handleRequestMap v = do
   colorlessVersion <- getColorlessVersion v
   assertColorlessVersionCompatiability colorlessVersion
-  _apiVersion <- getApiVersion v
-  case parseRequest v of
-    Nothing -> runtimeThrow RuntimeError'UnparsableFormat
-    Just req -> toJSON <$> handleRequest req
+  apiVersion <- getApiVersion v
+  let apiMajor = major apiVersion
+  case Map.lookup apiMajor handleRequestMap of
+    Nothing -> case leastAndGreatest (Map.keys handleRequestMap) of
+      Nothing -> runtimeThrow RuntimeError'NoImplementation
+      Just (minMajor, maxMajor) ->
+        if minMajor > apiMajor
+          then runtimeThrow RuntimeError'ApiVersionTooLow
+          else if maxMajor < apiMajor
+            then runtimeThrow RuntimeError'ApiVersionTooHigh
+            else runtimeThrow RuntimeError'NoImplementation
+    Just (minMinor, handleRequest) -> if minor apiVersion < minMinor
+      then runtimeThrow RuntimeError'ApiVersionTooLow
+      else case parseRequest v of
+        Nothing -> runtimeThrow RuntimeError'UnparsableFormat
+        Just req -> toJSON <$> handleRequest req
+
+leastAndGreatest :: Ord a => [a] -> Maybe (a,a)
+leastAndGreatest [] = Nothing
+leastAndGreatest xs = Just (minimum xs, maximum xs)
 
 assertColorlessVersionCompatiability :: RuntimeThrower m => Version -> m ()
 assertColorlessVersionCompatiability Version{major,minor}
@@ -49,5 +76,5 @@ getVersion name err (Object o) = case HML.lookup name o of
   Nothing -> runtimeThrow err
 getVersion _ err _ = runtimeThrow err
 
-parseRequest :: (FromJSON m, FromJSON c) => Value -> Maybe (Request m c)
+parseRequest :: Value -> Maybe Request
 parseRequest = parseMaybe parseJSON
