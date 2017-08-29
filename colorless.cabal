@@ -32,14 +32,13 @@ library
     , monad-control
     , monad-logger
     , mtl
-    , path-pieces
-    , persistent
-    , persistent-template
     , random
+    , scientific
     , text
     , unordered-containers
     , vector
   exposed-modules:
+      Colorless.Ast
       Colorless.Endpoint
       Colorless.Runtime
       Colorless.Types
@@ -58,7 +57,10 @@ test-suite colorless-suite
     , colorless
     , containers
     , hspec
+    , scientific
     , text
+    , vector
   other-modules:
+      AstSpec
       ColorlessSpec
   default-language: Haskell2010

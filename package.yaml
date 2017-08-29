@@ -37,10 +37,8 @@ library:
   - monad-control
   - monad-logger
   - mtl
-  - path-pieces
-  - persistent
-  - persistent-template
   - random
+  - scientific
   - text
   - unordered-containers
   - vector
@@ -53,7 +51,9 @@ tests:
     - colorless
     - containers
     - hspec
+    - scientific
     - text
+    - vector
     ghc-options:
     - -rtsopts
     - -threaded
