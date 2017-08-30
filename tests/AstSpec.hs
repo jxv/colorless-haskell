@@ -6,7 +6,8 @@ import Test.Hspec
 import Data.Aeson
 import Data.Aeson.Types
 
-import Colorless.Ast
+import Colorless.Runtime.Types
+import Colorless.Runtime.Ast
 
 parseAst :: Value -> Maybe Ast
 parseAst = parseMaybe parseJSON
@@ -87,10 +88,10 @@ spec = do
         (parseAst $ Array $ V.fromList ["someFn", "one", Bool False])
         (Just $ Ast'FnCall $ FnCall (Ast'Ref $ Ref "someFn") [Ast'Const $ Const'String "one", Ast'Const $ Const'Bool False])
 
-    context "EnumeratorCall" $ do
+    context "EnumerationCall" $ do
       it "simple" $ shouldBe
         (parseAst $ object [ "n" .= String "MyEnum", "e" .= object [ "e" .= String "MyTag" ] ])
-        (Just $ Ast'EnumeratorCall $ EnumeratorCall "MyEnum" (Ast'Enumerator $ Enumerator "MyTag" Nothing))
+        (Just $ Ast'EnumerationCall $ EnumerationCall "MyEnum" (Ast'Enumerator $ Enumerator "MyTag" Nothing))
 
     context "StructCall" $ do
       it "simple" $ shouldBe

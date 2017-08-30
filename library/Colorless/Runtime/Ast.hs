@@ -1,12 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TupleSections #-}
-module Colorless.Ast
-  ( Type(..)
-  , TypeName(..)
-  , MemberName(..)
-  , Symbol(..)
-  --
-  , Ast(..)
+module Colorless.Runtime.Ast
+  ( Ast(..)
   , Ref(..)
   , If(..)
   , Set(..)
@@ -19,7 +14,7 @@ module Colorless.Ast
   , Enumerator(..)
   , Struct(..)
   , StructCall(..)
-  , EnumeratorCall(..)
+  , EnumerationCall(..)
   , ZeroArityCall(..)
   , Const(..)
   ) where
@@ -29,11 +24,12 @@ import qualified Data.Vector as V
 import Control.Monad (mzero)
 import Control.Applicative ((<|>))
 import Data.Text (Text)
-import Data.String (IsString)
 import Data.Aeson
 import Data.Scientific
 import Data.Map (Map)
 import GHC.Generics (Generic)
+
+import Colorless.Runtime.Types
 
 data Ast
   = Ast'Void
@@ -49,7 +45,7 @@ data Ast
   | Ast'Struct Struct
   | Ast'Enumerator Enumerator
   | Ast'StructCall StructCall
-  | Ast'EnumeratorCall EnumeratorCall
+  | Ast'EnumerationCall EnumerationCall
   | Ast'ZeroArityCall ZeroArityCall
   | Ast'Const Const
   deriving (Show, Eq)
@@ -66,15 +62,12 @@ instance FromJSON Ast where
     <|> (Ast'List <$> parseJSON v)
     <|> (Ast'Begin <$> parseJSON v)
     <|> (Ast'FnCall <$> parseJSON v)
-    <|> (Ast'EnumeratorCall <$> parseJSON v)
+    <|> (Ast'EnumerationCall <$> parseJSON v)
     <|> (Ast'StructCall <$> parseJSON v)
     <|> (Ast'ZeroArityCall <$> parseJSON v)
     <|> (Ast'Enumerator <$> parseJSON v)
     <|> (Ast'Struct <$> parseJSON v)
     <|> (Ast'Const <$> parseJSON v)
-
-newtype Symbol = Symbol Text
-  deriving (Show, Eq, Ord, FromJSON, IsString)
 
 data Ref = Ref
   { symbol :: Symbol
@@ -129,21 +122,6 @@ instance FromJSON Define where
     _ -> mzero
   parseJSON _ = mzero
 
-data Type = Type
-  { n :: TypeName
-  , p :: Maybe Type
-  } deriving (Show, Eq)
-
-instance FromJSON Type where
-  parseJSON = \case
-    String s -> pure $ Type (TypeName s) Nothing
-    Object o -> do
-      n <- o .: "n"
-      case HML.lookup "p" o of
-        Nothing -> pure $ Type n Nothing
-        Just p -> Type n <$> fmap Just (parseJSON p)
-    _ -> mzero
-
 data Lambda = Lambda
   { args :: [(Symbol, Type)]
   , expr :: Ast
@@ -191,21 +169,12 @@ instance FromJSON FnCall where
     _ -> mzero
   parseJSON _ = mzero
 
-newtype TypeName = TypeName Text
-  deriving (Show, Eq, Ord, FromJSON, IsString)
-
-newtype EnumeratorName = EnumeratorName Text
-  deriving (Show, Eq, Ord, FromJSON, IsString)
-
-newtype MemberName = MemberName Text
-  deriving (Show, Eq, Ord, FromJSON, FromJSONKey, IsString)
-
-data EnumeratorCall = EnumeratorCall
+data EnumerationCall = EnumerationCall
   { n :: TypeName
   , e :: Ast
   } deriving (Show, Eq, Generic)
 
-instance FromJSON EnumeratorCall
+instance FromJSON EnumerationCall
 
 data StructCall = StructCall
   { n :: TypeName

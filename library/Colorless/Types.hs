@@ -15,10 +15,13 @@ module Colorless.Types
   , decodeTransport
   ) where
 
+import qualified Data.HashMap.Lazy as HML
 import Control.Monad (mzero)
 import Data.Aeson
-import Data.Text (Text)
 import Data.Aeson.Types (Parser)
+import Data.Map (Map)
+import Data.Text (Text)
+import Data.String (IsString)
 import GHC.Generics
 
 newtype Major = Major Int
