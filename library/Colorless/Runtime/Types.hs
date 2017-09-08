@@ -7,16 +7,19 @@ module Colorless.Runtime.Types
   , EnumeratorType(..)
   , EnumerationType(..)
   , StructType(..)
-  , ZeroArityType(..)
+  , HollowType(..)
   , TypeEntry(..)
   , TypeDict
+  , Prim(..)
+  , Const(..)
   ) where
 
 import qualified Data.HashMap.Lazy as HML
 import Control.Monad (mzero)
-import Data.Aeson (FromJSON(..), FromJSONKey, Value(..), (.:))
+import Data.Aeson (FromJSON(..), FromJSONKey, ToJSONKey, Value(..), (.:), ToJSON(..))
 import Data.Text (Text)
 import Data.Map (Map)
+import Data.Scientific
 import Data.String (IsString)
 
 newtype Symbol = Symbol Text
@@ -41,10 +44,10 @@ newtype TypeName = TypeName Text
   deriving (Show, Eq, Ord, FromJSON, IsString)
 
 newtype EnumeratorName = EnumeratorName Text
-  deriving (Show, Eq, Ord, FromJSON, IsString)
+  deriving (Show, Eq, Ord, FromJSON, ToJSON, IsString)
 
 newtype MemberName = MemberName Text
-  deriving (Show, Eq, Ord, FromJSON, FromJSONKey, IsString)
+  deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey, IsString)
 
 data EnumeratorType = EnumeratorType
   { m :: Maybe (Map MemberName Type)
@@ -60,14 +63,42 @@ data StructType = StructType
   , o :: Type
   } deriving (Show, Eq)
 
-data ZeroArityType = ZeroArityType
+data HollowType = HollowType
   { o :: Type
   } deriving (Show, Eq)
 
 data TypeEntry
   = TypeEntry'EnumerationType EnumerationType
   | TypeEntry'StructType StructType
-  | TypeEntry'ZeroArityType ZeroArityType
+  | TypeEntry'HollowType HollowType
   deriving (Show, Eq)
 
 type TypeDict = Map TypeName TypeEntry
+
+data Prim
+  = Prim'Bool Bool
+  | Prim'Int64 Int
+  | Prim'String Text
+  deriving (Show, Eq)
+
+data Const
+  = Const'Null
+  | Const'Bool Bool
+  | Const'String Text
+  | Const'Number Scientific
+  deriving (Show, Eq)
+
+instance ToJSON Const where
+  toJSON = \case
+    Const'Null -> Null
+    Const'Bool b -> Bool b
+    Const'String s -> String s
+    Const'Number n -> Number n
+
+instance FromJSON Const where
+  parseJSON = \case
+    Null -> pure $ Const'Null
+    Bool b -> pure $ Const'Bool b
+    String s -> pure $ Const'String s
+    Number n -> pure $ Const'Number n
+    _ -> mzero

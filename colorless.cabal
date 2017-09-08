@@ -19,7 +19,7 @@ extra-source-files:
 library
   hs-source-dirs:
       library
-  default-extensions: ConstraintKinds DeriveGeneric DuplicateRecordFields FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving KindSignatures LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings RankNTypes ScopedTypeVariables TypeApplications TypeOperators
+  default-extensions: ConstraintKinds DeriveGeneric DuplicateRecordFields FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving KindSignatures LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings RankNTypes ScopedTypeVariables TupleSections TypeApplications TypeOperators
   ghc-options: -Wall
   build-depends:
       aeson
@@ -38,9 +38,11 @@ library
     , unordered-containers
     , vector
   exposed-modules:
-      Colorless.Ast
       Colorless.Endpoint
-      Colorless.Runtime
+      Colorless.Runtime.Ast
+      Colorless.Runtime.Expr
+      Colorless.Runtime.Types
+      Colorless.Runtime.Val
       Colorless.Types
   default-language: Haskell2010
 
@@ -49,7 +51,7 @@ test-suite colorless-suite
   main-is: Spec.hs
   hs-source-dirs:
       tests
-  default-extensions: ConstraintKinds DeriveGeneric DuplicateRecordFields FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving KindSignatures LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings RankNTypes ScopedTypeVariables TypeApplications TypeOperators
+  default-extensions: ConstraintKinds DeriveGeneric DuplicateRecordFields FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving KindSignatures LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings RankNTypes ScopedTypeVariables TupleSections TypeApplications TypeOperators
   ghc-options: -Wall -rtsopts -threaded -with-rtsopts=-N
   build-depends:
       aeson
@@ -62,5 +64,6 @@ test-suite colorless-suite
     , vector
   other-modules:
       AstSpec
-      ColorlessSpec
+      ExprSpec
+      ValSpec
   default-language: Haskell2010

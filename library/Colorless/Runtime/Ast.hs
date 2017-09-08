@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TupleSections #-}
 module Colorless.Runtime.Ast
   ( Ast(..)
   , Ref(..)
@@ -13,9 +12,11 @@ module Colorless.Runtime.Ast
   , FnCall(..)
   , Enumerator(..)
   , Struct(..)
+  , Wrap(..)
   , StructCall(..)
+  , WrapCall(..)
   , EnumerationCall(..)
-  , ZeroArityCall(..)
+  , HollowCall(..)
   , Const(..)
   ) where
 
@@ -25,15 +26,13 @@ import Control.Monad (mzero)
 import Control.Applicative ((<|>))
 import Data.Text (Text)
 import Data.Aeson
-import Data.Scientific
 import Data.Map (Map)
 import GHC.Generics (Generic)
 
 import Colorless.Runtime.Types
 
 data Ast
-  = Ast'Void
-  | Ast'Ref Ref
+  = Ast'Ref Ref
   | Ast'If If
   | Ast'Set Set
   | Ast'Get Get
@@ -42,16 +41,17 @@ data Ast
   | Ast'List List
   | Ast'Begin Begin
   | Ast'FnCall FnCall
-  | Ast'Struct Struct
-  | Ast'Enumerator Enumerator
+  | Ast'WrapCall WrapCall
   | Ast'StructCall StructCall
   | Ast'EnumerationCall EnumerationCall
-  | Ast'ZeroArityCall ZeroArityCall
+  | Ast'HollowCall HollowCall
+  | Ast'Enumerator Enumerator
+  | Ast'Struct Struct
+  | Ast'Wrap Wrap
   | Ast'Const Const
   deriving (Show, Eq)
 
 instance FromJSON Ast where
-  parseJSON Null = pure Ast'Void
   parseJSON v
     =   (Ast'Ref <$> parseJSON v)
     <|> (Ast'If <$> parseJSON v)
@@ -63,10 +63,12 @@ instance FromJSON Ast where
     <|> (Ast'Begin <$> parseJSON v)
     <|> (Ast'FnCall <$> parseJSON v)
     <|> (Ast'EnumerationCall <$> parseJSON v)
+    <|> (Ast'WrapCall <$> parseJSON v)
     <|> (Ast'StructCall <$> parseJSON v)
-    <|> (Ast'ZeroArityCall <$> parseJSON v)
+    <|> (Ast'HollowCall <$> parseJSON v)
     <|> (Ast'Enumerator <$> parseJSON v)
     <|> (Ast'Struct <$> parseJSON v)
+    <|> (Ast'Wrap <$> parseJSON v)
     <|> (Ast'Const <$> parseJSON v)
 
 data Ref = Ref
@@ -176,6 +178,13 @@ data EnumerationCall = EnumerationCall
 
 instance FromJSON EnumerationCall
 
+data WrapCall = WrapCall
+  { n :: TypeName
+  , w :: Ast
+  } deriving (Show, Eq, Generic)
+
+instance FromJSON WrapCall
+
 data StructCall = StructCall
   { n :: TypeName
   , m :: Map MemberName Ast
@@ -183,11 +192,11 @@ data StructCall = StructCall
 
 instance FromJSON StructCall
 
-data ZeroArityCall = ZeroArityCall
+data HollowCall = HollowCall
   { n :: TypeName
   } deriving (Show, Eq, Generic)
 
-instance FromJSON ZeroArityCall
+instance FromJSON HollowCall
 
 data Enumerator = Enumerator
   { e :: EnumeratorName
@@ -202,15 +211,8 @@ data Struct = Struct
 
 instance FromJSON Struct
 
-data Const
-  = Const'Bool Bool
-  | Const'String Text
-  | Const'Number Scientific
-  deriving (Show, Eq)
+data Wrap = Wrap
+  { w :: Ast
+  } deriving (Show, Eq, Generic)
 
-instance FromJSON Const where
-  parseJSON = \case
-    Bool b -> pure $ Const'Bool b
-    String s -> pure $ Const'String s
-    Number n -> pure $ Const'Number n
-    _ -> mzero
+instance FromJSON Wrap

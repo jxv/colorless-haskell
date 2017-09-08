@@ -15,13 +15,10 @@ module Colorless.Types
   , decodeTransport
   ) where
 
-import qualified Data.HashMap.Lazy as HML
 import Control.Monad (mzero)
 import Data.Aeson
 import Data.Aeson.Types (Parser)
-import Data.Map (Map)
 import Data.Text (Text)
-import Data.String (IsString)
 import GHC.Generics
 
 newtype Major = Major Int
@@ -57,7 +54,7 @@ instance FromJSON Request where
 
 data RuntimeError
   = RuntimeError'UnparsableFormat
-  | RuntimeError'UnrecognizedCall Value
+  | RuntimeError'UnrecognizedCall
   | RuntimeError'VariableLimit
   | RuntimeError'UnknownVariable Text
   | RuntimeError'IncompatibleType
@@ -74,12 +71,13 @@ data RuntimeError
   | RuntimeError'UnparsableMeta
   | RuntimeError'UnparsableCalls
   | RuntimeError'NoImplementation
+  | RuntimeError'NotMember
   deriving (Show, Eq)
 
 instance ToJSON RuntimeError where
   toJSON = \case
     RuntimeError'UnparsableFormat -> e "UnparsableFormat"
-    RuntimeError'UnrecognizedCall m -> object [ "e" .= String "UnrecognizedCall", "m" .= object [ "call" .= m ] ]
+    RuntimeError'UnrecognizedCall -> object [ "e" .= String "UnrecognizedCall" ]
     RuntimeError'VariableLimit -> e "VariableLimit"
     RuntimeError'UnknownVariable m -> object [ "e" .= String "UnknownVariable", "m" .= object [ "name" .= m ] ]
     RuntimeError'IncompatibleType -> e "IncompatibleType"
@@ -96,6 +94,7 @@ instance ToJSON RuntimeError where
     RuntimeError'UnparsableMeta -> e "UnparsableMeta"
     RuntimeError'UnparsableCalls -> e "UnparsableCalls"
     RuntimeError'NoImplementation -> e "NoImplementation"
+    RuntimeError'NotMember -> e "NotMember"
     where
       e s = object [ "e" .= String s ]
 

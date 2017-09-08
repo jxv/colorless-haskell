@@ -37,10 +37,6 @@ spec = do
         (Just $ Type "MyType" (Just $ Type "MyParam" Nothing))
 
   describe "parse Ast" $ do
-    it "Void" $ shouldBe
-      (parseAst Null)
-      (Just Ast'Void)
-
     it "Ref" $ shouldBe
       (parseAst $ object ["@" .= String "myRef"])
       (Just $ Ast'Ref $ Ref "myRef")
@@ -98,10 +94,10 @@ spec = do
         (parseAst $ object [ "n" .= String "MyStruct", "m" .= object [ "x" .= Bool True ] ])
         (Just $ Ast'StructCall $ StructCall "MyStruct" (Map.fromList [("x", Ast'Const $ Const'Bool True)]))
 
-    context "ZeroArityCall" $ do
+    context "HollowCall" $ do
       it "simple" $ shouldBe
         (parseAst $ object [ "n" .= String "MyCall" ])
-        (Just $ Ast'ZeroArityCall $ ZeroArityCall "MyCall")
+        (Just $ Ast'HollowCall $ HollowCall "MyCall")
 
     context "Enumerator" $ do
       it "simple without members" $ shouldBe
