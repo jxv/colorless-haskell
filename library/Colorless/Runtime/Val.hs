@@ -64,8 +64,8 @@ instance ToJSON ApiVal where
 instance FromJSON ApiVal where
   parseJSON v =
     (ApiVal'Wrap <$> parseJSON v) <|>
-    (ApiVal'Struct <$> parseJSON v) <|>
-    (ApiVal'Enumerator <$> parseJSON v)
+    (ApiVal'Enumerator <$> parseJSON v) <|>
+    (ApiVal'Struct <$> parseJSON v)
 
 data Wrap = Wrap
   { w :: Const
