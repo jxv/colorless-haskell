@@ -13,13 +13,13 @@ spec :: Spec
 spec = do
   describe "parse basic types from json" $ do
     it "Enumerator" $ shouldBe
-      (parseMaybe parseJSON $ object [ "e" .= ("None" :: Text) ])
+      (parseMaybe parseJSON $ object [ "tag" .= ("None" :: Text) ])
       (Just $ Val'ApiVal $ ApiVal'Enumerator $ Enumerator "None" Nothing)
     it "Struct" $ shouldBe
-      (parseMaybe parseJSON $ object [ "m" .= object [ "x" .= True ] ])
+      (parseMaybe parseJSON $ object [ "x" .= True ])
       (Just $ Val'ApiVal $ ApiVal'Struct $ Struct $ Map.fromList [("x", Val'Const $ Const'Bool True)] )
     it "Struct" $ shouldBe
-      (parseMaybe parseJSON $ object [ "m" .= object [ "x" .= object [ "e" .= ("None" :: Text) ] ] ])
+      (parseMaybe parseJSON $ object [ "x" .= object [ "tag" .= ("None" :: Text) ] ])
       (Just $ Val'ApiVal $ ApiVal'Struct $ Struct $ Map.fromList [("x", Val'ApiVal $ ApiVal'Enumerator $ Enumerator "None" Nothing)] )
   describe "parse types from val" $ do
     context "Option" $ do

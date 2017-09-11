@@ -78,8 +78,11 @@ data Struct = Struct
   { m :: Map MemberName Val
   } deriving (Show, Eq, Generic)
 
-instance ToJSON Struct
-instance FromJSON Struct
+instance ToJSON Struct where
+  toJSON Struct{m} = toJSON m
+
+instance FromJSON Struct where
+  parseJSON v = Struct <$> parseJSON v
 
 data Enumerator = Enumerator
   { e :: EnumeratorName
@@ -87,16 +90,17 @@ data Enumerator = Enumerator
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Enumerator where
-  toJSON Enumerator{e,m} = object $
-    [ "e" .= e ] ++
-    (maybe [] (\m' -> [ "m" .= toJSON m' ]) m)
+  toJSON Enumerator{e,m} = object $ [ "tag" .= e ] ++ case m of
+    Nothing -> []
+    Just m' -> concatMap (\(MemberName k,v) -> [ k .= v ]) (Map.toList m')
 
 instance FromJSON Enumerator where
   parseJSON (Object o) = do
-    e <- o .: "e"
-    Enumerator e <$> case HML.lookup "m" o of
-      Nothing -> pure Nothing
-      Just m -> Just <$> parseJSON m
+    e <- o .: "tag"
+    let tagless = HML.delete "tag" o
+    if HML.size o == 1
+      then pure $ Enumerator e Nothing
+      else Enumerator e <$> (Just <$> parseJSON (Object tagless))
   parseJSON _ = mzero
 
 --

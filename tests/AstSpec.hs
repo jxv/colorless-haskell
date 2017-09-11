@@ -86,7 +86,7 @@ spec = do
 
     context "EnumerationCall" $ do
       it "simple" $ shouldBe
-        (parseAst $ object [ "n" .= String "MyEnum", "e" .= object [ "e" .= String "MyTag" ] ])
+        (parseAst $ object [ "n" .= String "MyEnum", "e" .= object [ "tag" .= String "MyTag" ] ])
         (Just $ Ast'EnumerationCall $ EnumerationCall "MyEnum" (Ast'Enumerator $ Enumerator "MyTag" Nothing))
 
     context "StructCall" $ do
@@ -101,15 +101,15 @@ spec = do
 
     context "Enumerator" $ do
       it "simple without members" $ shouldBe
-        (parseAst $ object [ "e" .= String "MyTag" ])
+        (parseAst $ object [ "tag" .= String "MyTag" ])
         (Just $ Ast'Enumerator $ Enumerator "MyTag" Nothing)
       it "simple with members" $ shouldBe
-        (parseAst $ object [ "e" .= String "MyTag", "m" .= object [ "x" .= Bool True] ])
+        (parseAst $ object [ "tag" .= String "MyTag", "x" .= Bool True ])
         (Just $ Ast'Enumerator $ Enumerator "MyTag" (Just $ Map.fromList [("x", Ast'Const $ Const'Bool True)]))
 
     context "Struct" $ do
       it "simple" $ shouldBe
-        (parseAst $ object [ "m" .= object [ "key0" .= Bool True ] ])
+        (parseAst $ object [ "key0" .= Bool True ])
         (Just $ Ast'Struct $ Struct $ Map.fromList [("key0", Ast'Const $ Const'Bool True)])
 
     context "Const" $ do

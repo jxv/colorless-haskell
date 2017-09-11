@@ -203,13 +203,21 @@ data Enumerator = Enumerator
   , m :: Maybe (Map MemberName Ast)
   } deriving (Show, Eq, Generic)
 
-instance FromJSON Enumerator
+instance FromJSON Enumerator where
+  parseJSON (Object o) = do
+    tag <- o .: "tag"
+    let tagless = HML.delete "tag" o
+    if HML.size o == 1
+      then pure $ Enumerator tag Nothing
+      else Enumerator tag <$> (Just <$> parseJSON (Object tagless))
+  parseJSON _ = mzero
 
 data Struct = Struct
   { m :: Map MemberName Ast
   } deriving (Show, Eq, Generic)
 
-instance FromJSON Struct
+instance FromJSON Struct where
+  parseJSON v = Struct <$> parseJSON v
 
 data Wrap = Wrap
   { w :: Ast
