@@ -85,22 +85,22 @@ instance FromJSON Struct where
   parseJSON v = Struct <$> parseJSON v
 
 data Enumerator = Enumerator
-  { e :: EnumeratorName
+  { tag :: EnumeratorName
   , m :: Maybe (Map MemberName Val)
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Enumerator where
-  toJSON Enumerator{e,m} = object $ [ "tag" .= e ] ++ case m of
+  toJSON Enumerator{tag,m} = object $ [ "tag" .= tag ] ++ case m of
     Nothing -> []
     Just m' -> concatMap (\(MemberName k,v) -> [ k .= v ]) (Map.toList m')
 
 instance FromJSON Enumerator where
   parseJSON (Object o) = do
-    e <- o .: "tag"
+    tag <- o .: "tag"
     let tagless = HML.delete "tag" o
     if HML.size o == 1
-      then pure $ Enumerator e Nothing
-      else Enumerator e <$> (Just <$> parseJSON (Object tagless))
+      then pure $ Enumerator tag Nothing
+      else Enumerator tag <$> (Just <$> parseJSON (Object tagless))
   parseJSON _ = mzero
 
 --
@@ -229,14 +229,14 @@ instance FromVal Double where
   fromVal _ = Nothing
 
 instance FromVal a => FromVal (Maybe a) where
-  fromVal (Val'ApiVal (ApiVal'Enumerator (Enumerator e m))) = case (e,m) of
+  fromVal (Val'ApiVal (ApiVal'Enumerator (Enumerator tag m))) = case (tag,m) of
     ("Some",Just m') -> fromVal <$> Map.lookup "some" m'
     ("None",Nothing) -> Just Nothing
     _ -> Nothing
   fromVal _ = Nothing
 
 instance (FromVal a, FromVal b) => FromVal (Either a b) where
-  fromVal (Val'ApiVal (ApiVal'Enumerator (Enumerator e m))) = case (e,m) of
+  fromVal (Val'ApiVal (ApiVal'Enumerator (Enumerator tag m))) = case (tag,m) of
     ("Left",Just m') -> Map.lookup "left" m' >>= \l -> Left <$> fromVal l
     ("Right",Just m') -> Map.lookup "right" m' >>= \r -> Right <$> fromVal r
     _ -> Nothing

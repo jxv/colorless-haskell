@@ -199,7 +199,7 @@ data HollowCall = HollowCall
 instance FromJSON HollowCall
 
 data Enumerator = Enumerator
-  { e :: EnumeratorName
+  { tag :: EnumeratorName
   , m :: Maybe (Map MemberName Ast)
   } deriving (Show, Eq, Generic)
 

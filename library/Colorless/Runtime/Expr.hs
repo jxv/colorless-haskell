@@ -108,7 +108,7 @@ data UnStruct m = UnStruct
   } deriving (Show, Eq)
 
 data UnEnumerator m = UnEnumerator
-  { e :: EnumeratorName
+  { tag :: EnumeratorName
   , m :: Maybe (Map MemberName (Expr m))
   } deriving (Show, Eq)
 
@@ -220,7 +220,7 @@ fromAst = \case
   Ast'HollowCall Ast.HollowCall{n} -> Expr'ApiUnCall $ ApiUnCall'HollowUnCall $ HollowUnCall n
   Ast'StructCall Ast.StructCall{n,m} -> Expr'ApiUnCall $ ApiUnCall'StructUnCall $ StructUnCall n (fromAst <$> m)
   Ast'EnumerationCall Ast.EnumerationCall{n,e} -> Expr'ApiUnCall $ ApiUnCall'EnumerationUnCall $ EnumerationUnCall n (fromAst e)
-  Ast'Enumerator Ast.Enumerator{e,m} -> Expr'UnVal $ UnVal'UnEnumerator $ UnEnumerator e (fmap fromAst <$> m)
+  Ast'Enumerator Ast.Enumerator{tag,m} -> Expr'UnVal $ UnVal'UnEnumerator $ UnEnumerator tag (fmap fromAst <$> m)
   Ast'Struct Ast.Struct{m} -> Expr'UnVal $ UnVal'UnStruct $ UnStruct (fromAst <$> m)
   Ast'Wrap Ast.Wrap{w} -> Expr'UnVal $ UnVal'UnWrap $ UnWrap (fromAst w)
   Ast'Const c -> Expr'UnVal $ UnVal'Const c
@@ -290,12 +290,12 @@ evalUnVal unVal envRef = case unVal of
       Expr'Val (Val'Const c) -> return $ Expr'Val $ Val'ApiVal $ ApiVal'Wrap $ Wrap c
       _ -> runtimeThrow RuntimeError'IncompatibleType
 
-  UnVal'UnEnumerator UnEnumerator{e,m} -> do
+  UnVal'UnEnumerator UnEnumerator{tag,m} -> do
     case m of
-      Nothing -> return $ Expr'Val $ Val'ApiVal $ ApiVal'Enumerator $ Enumerator e Nothing
+      Nothing -> return $ Expr'Val $ Val'ApiVal $ ApiVal'Enumerator $ Enumerator tag Nothing
       Just members' -> do
         members <- mapM (\(name,expr) -> (name,) <$> (forceVal =<< eval expr envRef)) (Map.toList members')
-        return $ Expr'Val $ Val'ApiVal $ ApiVal'Enumerator $ Enumerator e (Just $ Map.fromList members)
+        return $ Expr'Val $ Val'ApiVal $ ApiVal'Enumerator $ Enumerator tag (Just $ Map.fromList members)
 
 evalIf :: (MonadIO m, RuntimeThrower m) => If m -> IORef (Env m) -> Eval m (Expr m)
 evalIf If{cond, true, false} envRef = do
