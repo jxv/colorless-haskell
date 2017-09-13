@@ -331,14 +331,15 @@ getter path expr =
 
 getterApiVal :: (MonadIO m, RuntimeThrower m) => [Text] -> ApiVal -> Eval m (Expr m)
 getterApiVal ("w":path) (ApiVal'Wrap (Wrap w)) = getter path (Expr'Val (Val'Const w))
-getterApiVal ("m":mName:path) (ApiVal'Struct Struct{m}) =
+getterApiVal (mName:path) (ApiVal'Struct Struct{m}) =
   case Map.lookup (MemberName mName) m of
     Nothing -> runtimeThrow RuntimeError'IncompatibleType
     Just member -> getter path (Expr'Val member)
-getterApiVal ("m":mName:path) (ApiVal'Enumerator Enumerator{m}) =
-  case m >>= Map.lookup (MemberName mName) of
-    Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    Just member -> getter path (Expr'Val member)
+getterApiVal (mName:path) (ApiVal'Enumerator Enumerator{m})
+  | mName == "tag" = runtimeThrow RuntimeError'IncompatibleType
+  | otherwise = case m >>= Map.lookup (MemberName mName) of
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+      Just member -> getter path (Expr'Val member)
 getterApiVal _ _ = runtimeThrow RuntimeError'IncompatibleType
 
 evalDefine :: (MonadIO m, RuntimeThrower m) => Define m -> IORef (Env m) -> Eval m (Expr m)
