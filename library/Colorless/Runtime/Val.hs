@@ -10,6 +10,7 @@ module Colorless.Runtime.Val
   , ToVal(..)
   , getMember
   , fromValFromJson
+  , combineObjects
   ) where
 
 import qualified Data.HashMap.Lazy as HML
@@ -251,3 +252,7 @@ getMember m n = fromVal =<< Map.lookup n m
 
 fromValFromJson :: (FromVal b) => Value -> Maybe b
 fromValFromJson x = fromVal =<< parseMaybe parseJSON x
+
+combineObjects :: Value -> Value -> Value
+combineObjects (Object x) (Object y) = Object $ HML.union x y
+combineObjects _ _ = error "not objects"

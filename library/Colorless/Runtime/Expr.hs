@@ -32,6 +32,9 @@ module Colorless.Runtime.Expr
   , apiCallName
   , fromAst
   --
+  , ApiParser(..)
+  , parseApiCall
+  --
   , eval
   , forceVal
   , runEval
@@ -39,7 +42,7 @@ module Colorless.Runtime.Expr
   ) where
 
 import qualified Data.Map as Map
-import Control.Monad (when)
+import Control.Monad (when, join)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks, lift)
 import Data.Map (Map)
@@ -508,3 +511,19 @@ divExpr = Expr'Fn . Fn $ \args ->
     [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> return . Expr'Val . Val'Const . Const'Number $ x / y
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooFewArguments
+
+--
+
+data ApiParser api = ApiParser
+  { hollow :: Map TypeName api
+  , struct :: Map TypeName (Val -> Maybe api)
+  , enumeration :: Map TypeName (Val -> Maybe api)
+  , wrap :: Map TypeName (Val -> Maybe api)
+  }
+
+parseApiCall :: ApiParser api -> ApiCall -> Maybe api
+parseApiCall ApiParser{hollow, struct, enumeration, wrap} = \case
+  ApiCall'Hollow n -> Map.lookup n hollow
+  ApiCall'Struct n s -> join $ ($ Val'ApiVal (ApiVal'Struct s)) <$> Map.lookup n struct
+  ApiCall'Enumeration n e -> join $ ($ Val'ApiVal (ApiVal'Enumerator e)) <$> Map.lookup n enumeration
+  ApiCall'Wrap n w -> join $ ($ Val'ApiVal (ApiVal'Wrap w)) <$> Map.lookup n wrap
