@@ -7,17 +7,12 @@ module Colorless.Types
   , Response(..)
   , ResponseError(..)
   , RuntimeError(..)
-  , Transport(..)
-  , ToTransport(..)
-  , FromTransport(..)
   , RuntimeThrower(..)
   , Options(..)
-  , decodeTransport
   ) where
 
 import Control.Monad (mzero)
 import Data.Aeson
-import Data.Aeson.Types (Parser)
 import Data.Text (Text)
 import GHC.Generics
 
@@ -77,9 +72,9 @@ data RuntimeError
 instance ToJSON RuntimeError where
   toJSON = \case
     RuntimeError'UnparsableFormat -> e "UnparsableFormat"
-    RuntimeError'UnrecognizedCall -> object [ "e" .= String "UnrecognizedCall" ]
+    RuntimeError'UnrecognizedCall -> object [ "tag" .= String "UnrecognizedCall" ]
     RuntimeError'VariableLimit -> e "VariableLimit"
-    RuntimeError'UnknownVariable m -> object [ "e" .= String "UnknownVariable", "m" .= object [ "name" .= m ] ]
+    RuntimeError'UnknownVariable m -> object [ "tag" .= String "UnknownVariable", "name" .= m ]
     RuntimeError'IncompatibleType -> e "IncompatibleType"
     RuntimeError'TooFewArguments -> e "TooFewArguments"
     RuntimeError'TooManyArguments -> e "TooManyArguments"
@@ -96,7 +91,7 @@ instance ToJSON RuntimeError where
     RuntimeError'NoImplementation -> e "NoImplementation"
     RuntimeError'NotMember -> e "NotMember"
     where
-      e s = object [ "e" .= String s ]
+      e s = object [ "tag" .= String s ]
 
 data ResponseError
   = ResponseError'Service Value
@@ -105,8 +100,8 @@ data ResponseError
 
 instance ToJSON ResponseError where
   toJSON = \case
-    ResponseError'Service m -> object [ "e" .= String "Service", "m" .= (object [ "service" .= m ]) ]
-    ResponseError'Runtime m -> object [ "e" .= String "Runtime", "m" .= (object [ "runtime" .= m ]) ]
+    ResponseError'Service m -> object [ "tag" .= String "Service", "service" .= m ]
+    ResponseError'Runtime m -> object [ "tag" .= String "Runtime", "runtime" .= m ]
 
 data Response
   = Response'Error ResponseError
@@ -114,55 +109,8 @@ data Response
   deriving (Show, Eq)
 
 instance ToJSON Response where
-  toJSON (Response'Error m) = object [ "e" .= String "Error", "m" .= (object [ "error" .= m ]) ]
-  toJSON (Response'Success m) = object [ "e" .= String "Success", "m" .= (object [ "success" .= m ]) ]
-
-newtype Transport a = Transport { unTransport :: a }
-  deriving (Show, Eq)
-
-class ToTransport a where
-  toTransport :: FromJSON a => Value -> Parser (Transport a)
-  toTransport v = Transport <$> parseJSON v
-
-instance ToTransport Bool
-instance ToTransport Int
-instance ToTransport Integer
-instance ToTransport Float
-instance ToTransport Double
-instance ToTransport Text
-instance ToTransport Char
-instance ToTransport a => ToTransport (Maybe a)
-instance ToTransport a => ToTransport [a]
-
-class FromTransport a where
-  fromTransport :: ToJSON a => Transport a -> Value
-  fromTransport (Transport a) = toJSON a
-
-decodeTransport :: (ToJSON a, FromTransport a) => a -> Value
-decodeTransport = fromTransport . Transport
-
-instance FromTransport Bool
-instance FromTransport Int
-instance FromTransport Integer
-instance FromTransport Float
-instance FromTransport Double
-instance FromTransport Text
-instance FromTransport Char
-instance FromTransport a => FromTransport (Maybe a)
-instance FromTransport a => FromTransport [a]
-
-instance FromTransport () where
-  fromTransport (Transport ()) = object [ "e" .= String "Unit" ]
-
-instance (FromTransport a, FromTransport b, ToJSON a, ToJSON b) => FromTransport (Either a b) where
-  fromTransport (Transport (Left a)) = object
-    [ "e" .= String "Left"
-    , "m" .= object [ "left" .= decodeTransport a ]
-    ]
-  fromTransport (Transport (Right b)) = object
-    [ "e" .= String "Right"
-    , "m" .= object [ "right" .= decodeTransport b ]
-    ]
+  toJSON (Response'Error m) = object [ "tag" .= String "Error", "error" .= m ]
+  toJSON (Response'Success m) = object [ "tag" .= String "Success", "success" .= m ]
 
 class Monad m => RuntimeThrower m where
   runtimeThrow :: RuntimeError -> m a

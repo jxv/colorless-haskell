@@ -8,8 +8,6 @@ module Colorless.Runtime.Types
   , EnumerationType(..)
   , StructType(..)
   , HollowType(..)
-  , TypeEntry(..)
-  , TypeDict
   , Prim(..)
   , Const(..)
   ) where
@@ -66,14 +64,6 @@ data StructType = StructType
 data HollowType = HollowType
   { o :: Type
   } deriving (Show, Eq)
-
-data TypeEntry
-  = TypeEntry'EnumerationType EnumerationType
-  | TypeEntry'StructType StructType
-  | TypeEntry'HollowType HollowType
-  deriving (Show, Eq)
-
-type TypeDict = Map TypeName TypeEntry
 
 data Prim
   = Prim'Bool Bool
