@@ -68,6 +68,9 @@ data HollowType = HollowType
 
 data Prim
   = Prim'Bool Bool
+  | Prim'I8 Int8
+  | Prim'I16 Int16
+  | Prim'I32 Int32
   | Prim'I64 Int64
   | Prim'String Text
   deriving (Show, Eq)
@@ -75,6 +78,9 @@ data Prim
 instance ToJSON Prim where
   toJSON = \case
     Prim'Bool b -> toJSON b
+    Prim'I8 i -> toJSON i
+    Prim'I16 i -> toJSON i
+    Prim'I32 i -> toJSON i
     Prim'I64 i -> toJSON i
     Prim'String s -> toJSON s
 

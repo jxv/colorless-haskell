@@ -127,13 +127,13 @@ instance ToVal Int where
   toVal = intToVal
 
 instance ToVal Int8 where
-  toVal = intToVal
+  toVal i = Val'Prim $ Prim'I8 i
 
 instance ToVal Int16 where
-  toVal = intToVal
+  toVal i = Val'Prim $ Prim'I16 i
 
 instance ToVal Int32 where
-  toVal = intToVal
+  toVal i = Val'Prim $ Prim'I32 i
 
 instance ToVal Int64 where
   toVal i = Val'Prim $ Prim'I64 i
@@ -197,13 +197,22 @@ instance FromVal Int where
   fromVal = intFromVal
 
 instance FromVal Int8 where
-  fromVal = intFromVal
+  fromVal = \case
+    Val'Const (Const'Number n) -> toBoundedInteger n
+    Val'Prim (Prim'I8 i) -> Just i
+    _ -> Nothing
 
 instance FromVal Int16 where
-  fromVal = intFromVal
+  fromVal = \case
+    Val'Const (Const'Number n) -> toBoundedInteger n
+    Val'Prim (Prim'I16 i) -> Just i
+    _ -> Nothing
 
 instance FromVal Int32 where
-  fromVal = intFromVal
+  fromVal = \case
+    Val'Const (Const'Number n) -> toBoundedInteger n
+    Val'Prim (Prim'I32 i) -> Just i
+    _ -> Nothing
 
 instance FromVal Int64 where
   fromVal = \case
