@@ -17,6 +17,7 @@ import Control.Monad (mzero)
 import Data.Aeson (FromJSON(..), FromJSONKey, ToJSONKey, Value(..), (.:), ToJSON(..))
 import Data.Text (Text)
 import Data.Map (Map)
+import Data.Int
 import Data.Scientific
 import Data.String (IsString)
 
@@ -67,9 +68,15 @@ data HollowType = HollowType
 
 data Prim
   = Prim'Bool Bool
-  | Prim'Int64 Int
+  | Prim'I64 Int64
   | Prim'String Text
   deriving (Show, Eq)
+
+instance ToJSON Prim where
+  toJSON = \case
+    Prim'Bool b -> toJSON b
+    Prim'I64 i -> toJSON i
+    Prim'String s -> toJSON s
 
 data Const
   = Const'Null

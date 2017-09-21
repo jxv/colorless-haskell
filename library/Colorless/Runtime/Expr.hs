@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 module Colorless.Runtime.Expr
   ( Expr(..)
   , EvalConfig(..)
@@ -46,9 +47,11 @@ import Control.Monad (when, join)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks, lift)
 import Data.Map (Map)
+import Data.Int
 import Data.Aeson (parseJSON, Value)
 import Data.Aeson.Types (parseMaybe)
 import Data.IORef (IORef, readIORef, newIORef, writeIORef)
+import Data.Scientific (toBoundedInteger, Scientific)
 import Data.Text (Text)
 
 import qualified Colorless.Runtime.Ast as Ast
@@ -480,37 +483,37 @@ concatExpr = Expr'Fn . Fn $ \args ->
       _ -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooManyArguments
 
-addExpr :: RuntimeThrower m => Expr m
-addExpr = Expr'Fn . Fn $ \args ->
+numExpr :: RuntimeThrower m
+  => (Scientific -> Scientific -> Scientific)
+  -> (Int64 -> Int64 -> Int64)
+  -> Expr m
+numExpr num i64 = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooManyArguments
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> return . Expr'Val . Val'Const . Const'Number $ x + y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> return . Expr'Val . Val'Const . Const'Number $ x `num` y
+
+    [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Prim (Prim'I64 y))] -> return . Expr'Val . Val'Prim . Prim'I64 $ x `i64` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I64 y))] -> case toBoundedInteger x of
+      Just x' -> return . Expr'Val . Val'Prim . Prim'I64 $ x' `i64` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> return . Expr'Val . Val'Prim . Prim'I64 $ x `i64` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooFewArguments
+
+addExpr :: RuntimeThrower m => Expr m
+addExpr = numExpr (+) (+)
 
 subExpr :: RuntimeThrower m => Expr m
-subExpr = Expr'Fn . Fn $ \args ->
-  case args of
-    (_:[]) -> runtimeThrow RuntimeError'TooManyArguments
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> return . Expr'Val . Val'Const . Const'Number $ x - y
-    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
-    _ -> runtimeThrow RuntimeError'TooFewArguments
+subExpr = numExpr (-) (-)
 
 mulExpr :: RuntimeThrower m => Expr m
-mulExpr = Expr'Fn . Fn $ \args ->
-  case args of
-    (_:[]) -> runtimeThrow RuntimeError'TooManyArguments
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> return . Expr'Val . Val'Const . Const'Number $ x * y
-    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
-    _ -> runtimeThrow RuntimeError'TooFewArguments
+mulExpr = numExpr (*) (*)
 
 divExpr :: RuntimeThrower m => Expr m
-divExpr = Expr'Fn . Fn $ \args ->
-  case args of
-    (_:[]) -> runtimeThrow RuntimeError'TooManyArguments
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> return . Expr'Val . Val'Const . Const'Number $ x / y
-    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
-    _ -> runtimeThrow RuntimeError'TooFewArguments
+divExpr = numExpr (/) div
 
 --
 

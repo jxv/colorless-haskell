@@ -31,6 +31,7 @@ import Colorless.Runtime.Types
 
 data Val
   = Val'Const Const
+  | Val'Prim Prim
   | Val'ApiVal ApiVal
   | Val'List [Val]
   deriving (Show, Eq)
@@ -40,6 +41,7 @@ instance ToJSON Val where
     Val'Const c -> toJSON c
     Val'ApiVal v -> toJSON v
     Val'List l -> toJSON l
+    Val'Prim p -> toJSON p
 
 instance FromJSON Val where
   parseJSON = \case
@@ -134,7 +136,7 @@ instance ToVal Int32 where
   toVal = intToVal
 
 instance ToVal Int64 where
-  toVal = intToVal
+  toVal i = Val'Prim $ Prim'I64 i
 
 instance ToVal Word where
   toVal = intToVal
@@ -204,7 +206,10 @@ instance FromVal Int32 where
   fromVal = intFromVal
 
 instance FromVal Int64 where
-  fromVal = intFromVal
+  fromVal = \case
+    Val'Const (Const'Number n) -> toBoundedInteger n
+    Val'Prim (Prim'I64 i) -> Just i
+    _ -> Nothing
 
 instance FromVal Word where
   fromVal = intFromVal
