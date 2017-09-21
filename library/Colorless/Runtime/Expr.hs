@@ -48,6 +48,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks, lift)
 import Data.Map (Map)
 import Data.Int
+import Data.Word
 import Data.Aeson (parseJSON, Value)
 import Data.Aeson.Types (parseMaybe)
 import Data.IORef (IORef, readIORef, newIORef, writeIORef)
@@ -489,8 +490,12 @@ numExpr :: RuntimeThrower m
   -> (Int16 -> Int16 -> Int16)
   -> (Int32 -> Int32 -> Int32)
   -> (Int64 -> Int64 -> Int64)
+  -> (Word8 -> Word8 -> Word8)
+  -> (Word16 -> Word16 -> Word16)
+  -> (Word32 -> Word32 -> Word32)
+  -> (Word64 -> Word64 -> Word64)
   -> Expr m
-numExpr num i8 i16 i32 i64 = Expr'Fn . Fn $ \args ->
+numExpr num i8 i16 i32 i64 u8 u16 u32 u64 = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooManyArguments
     [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> return . Expr'Val . Val'Const . Const'Number $ x `num` y
@@ -527,20 +532,52 @@ numExpr num i8 i16 i32 i64 = Expr'Fn . Fn $ \args ->
       Just y' -> return . Expr'Val . Val'Prim . Prim'I64 $ x `i64` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
+    [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Prim (Prim'U8 y))] -> return . Expr'Val . Val'Prim . Prim'U8 $ x `u8` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U8 y))] -> case toBoundedInteger x of
+      Just x' -> return . Expr'Val . Val'Prim . Prim'U8 $ x' `u8` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> return . Expr'Val . Val'Prim . Prim'U8 $ x `u8` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+
+    [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Prim (Prim'U16 y))] -> return . Expr'Val . Val'Prim . Prim'U16 $ x `u16` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U16 y))] -> case toBoundedInteger x of
+      Just x' -> return . Expr'Val . Val'Prim . Prim'U16 $ x' `u16` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> return . Expr'Val . Val'Prim . Prim'U16 $ x `u16` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+
+    [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Prim (Prim'U32 y))] -> return . Expr'Val . Val'Prim . Prim'U32 $ x `u32` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U32 y))] -> case toBoundedInteger x of
+      Just x' -> return . Expr'Val . Val'Prim . Prim'U32 $ x' `u32` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> return . Expr'Val . Val'Prim . Prim'U32 $ x `u32` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+
+    [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Prim (Prim'U64 y))] -> return . Expr'Val . Val'Prim . Prim'U64 $ x `u64` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U64 y))] -> case toBoundedInteger x of
+      Just x' -> return . Expr'Val . Val'Prim . Prim'U64 $ x' `u64` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> return . Expr'Val . Val'Prim . Prim'U64 $ x `u64` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooFewArguments
 
 addExpr :: RuntimeThrower m => Expr m
-addExpr = numExpr (+) (+) (+) (+) (+)
+addExpr = numExpr (+) (+) (+) (+) (+) (+) (+) (+) (+)
 
 subExpr :: RuntimeThrower m => Expr m
-subExpr = numExpr (-) (-) (-) (-) (-)
+subExpr = numExpr (-) (-) (-) (-) (-) (-) (-) (-) (-)
 
 mulExpr :: RuntimeThrower m => Expr m
-mulExpr = numExpr (*) (*) (*) (*) (*)
+mulExpr = numExpr (*) (*) (*) (*) (*) (*) (*) (*) (*)
 
 divExpr :: RuntimeThrower m => Expr m
-divExpr = numExpr (/) div div div div
+divExpr = numExpr (/) div div div div div div div div
 
 --
 

@@ -142,16 +142,16 @@ instance ToVal Word where
   toVal = intToVal
 
 instance ToVal Word8 where
-  toVal = intToVal
+  toVal u = Val'Prim $ Prim'U8 u
 
 instance ToVal Word16 where
-  toVal = intToVal
+  toVal u = Val'Prim $ Prim'U16 u
 
 instance ToVal Word32 where
-  toVal = intToVal
+  toVal u = Val'Prim $ Prim'U32 u
 
 instance ToVal Word64 where
-  toVal = intToVal
+  toVal u = Val'Prim $ Prim'U64 u
 
 instance ToVal Float where
     toVal f = Val'Const $ Const'Number $ fromFloatDigits f
@@ -224,16 +224,28 @@ instance FromVal Word where
   fromVal = intFromVal
 
 instance FromVal Word8 where
-  fromVal = intFromVal
+  fromVal = \case
+    Val'Const (Const'Number n) -> toBoundedInteger n
+    Val'Prim (Prim'U8 u) -> Just u
+    _ -> Nothing
 
 instance FromVal Word16 where
-  fromVal = intFromVal
+  fromVal = \case
+    Val'Const (Const'Number n) -> toBoundedInteger n
+    Val'Prim (Prim'U16 u) -> Just u
+    _ -> Nothing
 
 instance FromVal Word32 where
-  fromVal = intFromVal
+  fromVal = \case
+    Val'Const (Const'Number n) -> toBoundedInteger n
+    Val'Prim (Prim'U32 u) -> Just u
+    _ -> Nothing
 
 instance FromVal Word64 where
-  fromVal = intFromVal
+  fromVal = \case
+    Val'Const (Const'Number n) -> toBoundedInteger n
+    Val'Prim (Prim'U64 u) -> Just u
+    _ -> Nothing
 
 instance FromVal Float where
   fromVal (Val'Const (Const'Number n)) = Just $ toRealFloat n
