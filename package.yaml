@@ -4,6 +4,7 @@ category: Web
 synopsis: Colorless
 description: Colorless
 maintainer: Joe Vargas
+license: BSD3
 extra-source-files:
 - package.yaml
 - README.md
@@ -29,7 +30,7 @@ default-extensions:
 library:
   dependencies:
   - aeson
-  - base
+  - base >= 4.7 && < 5
   - bytestring
   - containers
   - errors
@@ -48,7 +49,7 @@ tests:
   colorless-suite:
     dependencies:
     - aeson
-    - base
+    - base >= 4.7 && < 5
     - colorless
     - containers
     - hspec
