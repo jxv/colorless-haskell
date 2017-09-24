@@ -12,20 +12,20 @@ import Colorless.Runtime.Val
 spec :: Spec
 spec = do
   describe "parse basic types from json" $ do
-    it "Enumerator" $ shouldBe
+    it "Enumeral" $ shouldBe
       (parseMaybe parseJSON $ object [ "tag" .= ("None" :: Text) ])
-      (Just $ Val'ApiVal $ ApiVal'Enumerator $ Enumerator "None" Nothing)
+      (Just $ Val'ApiVal $ ApiVal'Enumeral $ Enumeral "None" Nothing)
     it "Struct" $ shouldBe
       (parseMaybe parseJSON $ object [ "x" .= True ])
       (Just $ Val'ApiVal $ ApiVal'Struct $ Struct $ Map.fromList [("x", Val'Const $ Const'Bool True)] )
     it "Struct" $ shouldBe
       (parseMaybe parseJSON $ object [ "x" .= object [ "tag" .= ("None" :: Text) ] ])
-      (Just $ Val'ApiVal $ ApiVal'Struct $ Struct $ Map.fromList [("x", Val'ApiVal $ ApiVal'Enumerator $ Enumerator "None" Nothing)] )
+      (Just $ Val'ApiVal $ ApiVal'Struct $ Struct $ Map.fromList [("x", Val'ApiVal $ ApiVal'Enumeral $ Enumeral "None" Nothing)] )
   describe "parse types from val" $ do
     context "Option" $ do
       it "None" $ shouldBe
-        (fromVal $ Val'ApiVal $ ApiVal'Enumerator $ Enumerator "None" Nothing)
+        (fromVal $ Val'ApiVal $ ApiVal'Enumeral $ Enumeral "None" Nothing)
         (Just Nothing :: Maybe (Maybe Bool))
       it "Some" $ shouldBe
-        (fromVal $ Val'ApiVal $ ApiVal'Enumerator $ Enumerator "Some" $ Just $ Map.fromList [("some", Val'Const $ Const'Bool $ True)])
+        (fromVal $ Val'ApiVal $ ApiVal'Enumeral $ Enumeral "Some" $ Just $ Map.fromList [("some", Val'Const $ Const'Bool $ True)])
         (Just (Just True) :: Maybe (Maybe Bool))

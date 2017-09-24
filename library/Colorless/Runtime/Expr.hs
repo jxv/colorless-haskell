@@ -5,7 +5,7 @@ module Colorless.Runtime.Expr
   --
   , Ref(..)
   , UnVal(..)
-  , UnEnumerator(..)
+  , UnEnumeral(..)
   , UnWrap(..)
   , UnStruct(..)
   , If(..)
@@ -26,7 +26,7 @@ module Colorless.Runtime.Expr
   , ApiVal(..)
   , Wrap(..)
   , Struct(..)
-  , Enumerator(..)
+  , Enumeral(..)
   , ApiCall(..)
   --
   , jsonToExpr
@@ -103,7 +103,7 @@ data UnVal m
   = UnVal'Const Const
   | UnVal'UnWrap (UnWrap m)
   | UnVal'UnStruct (UnStruct m)
-  | UnVal'UnEnumerator (UnEnumerator m)
+  | UnVal'UnEnumeral (UnEnumeral m)
   deriving (Show, Eq)
 
 data UnWrap m = UnWrap
@@ -114,8 +114,8 @@ data UnStruct m = UnStruct
   { m :: Map MemberName (Expr m)
   } deriving (Show, Eq)
 
-data UnEnumerator m = UnEnumerator
-  { tag :: EnumeratorName
+data UnEnumeral m = UnEnumeral
+  { tag :: EnumeralName
   , m :: Maybe (Map MemberName (Expr m))
   } deriving (Show, Eq)
 
@@ -199,7 +199,7 @@ data EnumerationUnCall m = EnumerationUnCall
 data ApiCall
   = ApiCall'Hollow TypeName
   | ApiCall'Struct TypeName Struct
-  | ApiCall'Enumeration TypeName Enumerator
+  | ApiCall'Enumeration TypeName Enumeral
   | ApiCall'Wrap TypeName Wrap
   deriving (Show, Eq)
 
@@ -227,7 +227,7 @@ fromAst = \case
   Ast'HollowCall Ast.HollowCall{n} -> Expr'ApiUnCall $ ApiUnCall'HollowUnCall $ HollowUnCall n
   Ast'StructCall Ast.StructCall{n,m} -> Expr'ApiUnCall $ ApiUnCall'StructUnCall $ StructUnCall n (fromAst <$> m)
   Ast'EnumerationCall Ast.EnumerationCall{n,e} -> Expr'ApiUnCall $ ApiUnCall'EnumerationUnCall $ EnumerationUnCall n (fromAst e)
-  Ast'Enumerator Ast.Enumerator{tag,m} -> Expr'UnVal $ UnVal'UnEnumerator $ UnEnumerator tag (fmap fromAst <$> m)
+  Ast'Enumeral Ast.Enumeral{tag,m} -> Expr'UnVal $ UnVal'UnEnumeral $ UnEnumeral tag (fmap fromAst <$> m)
   Ast'Struct Ast.Struct{m} -> Expr'UnVal $ UnVal'UnStruct $ UnStruct (fromAst <$> m)
   Ast'Wrap Ast.Wrap{w} -> Expr'UnVal $ UnVal'UnWrap $ UnWrap (fromAst w)
   Ast'Const c -> Expr'UnVal $ UnVal'Const c
@@ -297,12 +297,12 @@ evalUnVal unVal envRef = case unVal of
       Expr'Val (Val'Const c) -> return $ Expr'Val $ Val'ApiVal $ ApiVal'Wrap $ Wrap c
       _ -> runtimeThrow RuntimeError'IncompatibleType
 
-  UnVal'UnEnumerator UnEnumerator{tag,m} -> do
+  UnVal'UnEnumeral UnEnumeral{tag,m} -> do
     case m of
-      Nothing -> return $ Expr'Val $ Val'ApiVal $ ApiVal'Enumerator $ Enumerator tag Nothing
+      Nothing -> return $ Expr'Val $ Val'ApiVal $ ApiVal'Enumeral $ Enumeral tag Nothing
       Just members' -> do
         members <- mapM (\(name,expr) -> (name,) <$> (forceVal =<< eval expr envRef)) (Map.toList members')
-        return $ Expr'Val $ Val'ApiVal $ ApiVal'Enumerator $ Enumerator tag (Just $ Map.fromList members)
+        return $ Expr'Val $ Val'ApiVal $ ApiVal'Enumeral $ Enumeral tag (Just $ Map.fromList members)
 
 evalIf :: (MonadIO m, RuntimeThrower m) => If m -> IORef (Env m) -> Eval m (Expr m)
 evalIf If{cond, true, false} envRef = do
@@ -342,7 +342,7 @@ getterApiVal (mName:path) (ApiVal'Struct Struct{m}) =
   case Map.lookup (MemberName mName) m of
     Nothing -> runtimeThrow RuntimeError'IncompatibleType
     Just member -> getter path (Expr'Val member)
-getterApiVal (mName:path) (ApiVal'Enumerator Enumerator{m})
+getterApiVal (mName:path) (ApiVal'Enumeral Enumeral{m})
   | mName == "tag" = runtimeThrow RuntimeError'IncompatibleType
   | otherwise = case m >>= Map.lookup (MemberName mName) of
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
@@ -438,7 +438,7 @@ evalEnumerationUnCall :: (MonadIO m, RuntimeThrower m) => EnumerationUnCall m ->
 evalEnumerationUnCall EnumerationUnCall{n,e} envRef = do
   expr <- eval e envRef
   case expr of
-    Expr'Val (Val'ApiVal (ApiVal'Enumerator e')) -> Eval . ReaderT $ \cfg ->
+    Expr'Val (Val'ApiVal (ApiVal'Enumeral e')) -> Eval . ReaderT $ \cfg ->
       apiCall cfg $ ApiCall'Enumeration n e'
     _ -> runtimeThrow RuntimeError'IncompatibleType
 
@@ -673,5 +673,5 @@ parseApiCall :: ApiParser api -> ApiCall -> Maybe api
 parseApiCall ApiParser{hollow, struct, enumeration, wrap} = \case
   ApiCall'Hollow n -> Map.lookup n hollow
   ApiCall'Struct n s -> join $ ($ Val'ApiVal (ApiVal'Struct s)) <$> Map.lookup n struct
-  ApiCall'Enumeration n e -> join $ ($ Val'ApiVal (ApiVal'Enumerator e)) <$> Map.lookup n enumeration
+  ApiCall'Enumeration n e -> join $ ($ Val'ApiVal (ApiVal'Enumeral e)) <$> Map.lookup n enumeration
   ApiCall'Wrap n w -> join $ ($ Val'ApiVal (ApiVal'Wrap w)) <$> Map.lookup n wrap

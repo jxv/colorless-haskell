@@ -4,7 +4,7 @@ module Colorless.Runtime.Val
   , ApiVal(..)
   , Wrap(..)
   , Struct(..)
-  , Enumerator(..)
+  , Enumeral(..)
   --
   , FromVal(..)
   , ToVal(..)
@@ -55,19 +55,19 @@ instance FromJSON Val where
 data ApiVal
   = ApiVal'Wrap Wrap
   | ApiVal'Struct Struct
-  | ApiVal'Enumerator Enumerator
+  | ApiVal'Enumeral Enumeral
   deriving (Show, Eq)
 
 instance ToJSON ApiVal where
   toJSON = \case
     ApiVal'Wrap w -> toJSON w
     ApiVal'Struct s -> toJSON s
-    ApiVal'Enumerator e -> toJSON e
+    ApiVal'Enumeral e -> toJSON e
 
 instance FromJSON ApiVal where
   parseJSON v =
     (ApiVal'Wrap <$> parseJSON v) <|>
-    (ApiVal'Enumerator <$> parseJSON v) <|>
+    (ApiVal'Enumeral <$> parseJSON v) <|>
     (ApiVal'Struct <$> parseJSON v)
 
 data Wrap = Wrap
@@ -87,23 +87,23 @@ instance ToJSON Struct where
 instance FromJSON Struct where
   parseJSON v = Struct <$> parseJSON v
 
-data Enumerator = Enumerator
-  { tag :: EnumeratorName
+data Enumeral = Enumeral
+  { tag :: EnumeralName
   , m :: Maybe (Map MemberName Val)
   } deriving (Show, Eq, Generic)
 
-instance ToJSON Enumerator where
-  toJSON Enumerator{tag,m} = object $ [ "tag" .= tag ] ++ case m of
+instance ToJSON Enumeral where
+  toJSON Enumeral{tag,m} = object $ [ "tag" .= tag ] ++ case m of
     Nothing -> []
     Just m' -> concatMap (\(MemberName k,v) -> [ k .= v ]) (Map.toList m')
 
-instance FromJSON Enumerator where
+instance FromJSON Enumeral where
   parseJSON (Object o) = do
     tag <- o .: "tag"
     let tagless = HML.delete "tag" o
     if HML.size o == 1
-      then pure $ Enumerator tag Nothing
-      else Enumerator tag <$> (Just <$> parseJSON (Object tagless))
+      then pure $ Enumeral tag Nothing
+      else Enumeral tag <$> (Just <$> parseJSON (Object tagless))
   parseJSON _ = mzero
 
 --
@@ -160,14 +160,14 @@ instance ToVal Double where
     toVal d = Val'Const $ Const'Number $ fromFloatDigits d
 
 instance ToVal a => ToVal (Maybe a) where
-  toVal m = Val'ApiVal $ ApiVal'Enumerator $ case m of
-    Nothing -> Enumerator "None" Nothing
-    Just s -> Enumerator "Some" (Just $ Map.singleton "some" (toVal s))
+  toVal m = Val'ApiVal $ ApiVal'Enumeral $ case m of
+    Nothing -> Enumeral "None" Nothing
+    Just s -> Enumeral "Some" (Just $ Map.singleton "some" (toVal s))
 
 instance (ToVal a, ToVal b) => ToVal (Either a b) where
-  toVal m = Val'ApiVal $ ApiVal'Enumerator $ case m of
-    Left l -> Enumerator "Left" (Just $ Map.singleton "left" (toVal l))
-    Right r -> Enumerator "Right" (Just $ Map.singleton "right" (toVal r))
+  toVal m = Val'ApiVal $ ApiVal'Enumeral $ case m of
+    Left l -> Enumeral "Left" (Just $ Map.singleton "left" (toVal l))
+    Right r -> Enumeral "Right" (Just $ Map.singleton "right" (toVal r))
 
 instance ToVal a => ToVal [a] where
   toVal list = Val'List $ map toVal list
@@ -256,14 +256,14 @@ instance FromVal Double where
   fromVal _ = Nothing
 
 instance FromVal a => FromVal (Maybe a) where
-  fromVal (Val'ApiVal (ApiVal'Enumerator (Enumerator tag m))) = case (tag,m) of
+  fromVal (Val'ApiVal (ApiVal'Enumeral (Enumeral tag m))) = case (tag,m) of
     ("Some",Just m') -> fromVal <$> Map.lookup "some" m'
     ("None",Nothing) -> Just Nothing
     _ -> Nothing
   fromVal _ = Nothing
 
 instance (FromVal a, FromVal b) => FromVal (Either a b) where
-  fromVal (Val'ApiVal (ApiVal'Enumerator (Enumerator tag m))) = case (tag,m) of
+  fromVal (Val'ApiVal (ApiVal'Enumeral (Enumeral tag m))) = case (tag,m) of
     ("Left",Just m') -> Map.lookup "left" m' >>= \l -> Left <$> fromVal l
     ("Right",Just m') -> Map.lookup "right" m' >>= \r -> Right <$> fromVal r
     _ -> Nothing

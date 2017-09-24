@@ -3,8 +3,8 @@ module Colorless.Runtime.Types
   , Type(..)
   , TypeName(..)
   , MemberName(..)
-  , EnumeratorName(..)
-  , EnumeratorType(..)
+  , EnumeralName(..)
+  , EnumeralType(..)
   , EnumerationType(..)
   , StructType(..)
   , HollowType(..)
@@ -43,18 +43,18 @@ instance FromJSON Type where
 newtype TypeName = TypeName Text
   deriving (Show, Eq, Ord, FromJSON, IsString)
 
-newtype EnumeratorName = EnumeratorName Text
+newtype EnumeralName = EnumeralName Text
   deriving (Show, Eq, Ord, FromJSON, ToJSON, IsString)
 
 newtype MemberName = MemberName Text
   deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey, IsString)
 
-data EnumeratorType = EnumeratorType
+data EnumeralType = EnumeralType
   { m :: Maybe (Map MemberName Type)
   } deriving (Show, Eq)
 
 data EnumerationType = EnumerationType
-  { e :: Map EnumeratorName EnumeratorType
+  { e :: Map EnumeralName EnumeralType
   , o :: Type
   } deriving (Show, Eq)
 

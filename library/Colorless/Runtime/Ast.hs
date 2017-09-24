@@ -10,7 +10,7 @@ module Colorless.Runtime.Ast
   , List(..)
   , Begin(..)
   , FnCall(..)
-  , Enumerator(..)
+  , Enumeral(..)
   , Struct(..)
   , Wrap(..)
   , StructCall(..)
@@ -45,7 +45,7 @@ data Ast
   | Ast'StructCall StructCall
   | Ast'EnumerationCall EnumerationCall
   | Ast'HollowCall HollowCall
-  | Ast'Enumerator Enumerator
+  | Ast'Enumeral Enumeral
   | Ast'Struct Struct
   | Ast'Wrap Wrap
   | Ast'Const Const
@@ -66,7 +66,7 @@ instance FromJSON Ast where
     <|> (Ast'WrapCall <$> parseJSON v)
     <|> (Ast'StructCall <$> parseJSON v)
     <|> (Ast'HollowCall <$> parseJSON v)
-    <|> (Ast'Enumerator <$> parseJSON v)
+    <|> (Ast'Enumeral <$> parseJSON v)
     <|> (Ast'Struct <$> parseJSON v)
     <|> (Ast'Wrap <$> parseJSON v)
     <|> (Ast'Const <$> parseJSON v)
@@ -198,18 +198,18 @@ data HollowCall = HollowCall
 
 instance FromJSON HollowCall
 
-data Enumerator = Enumerator
-  { tag :: EnumeratorName
+data Enumeral = Enumeral
+  { tag :: EnumeralName
   , m :: Maybe (Map MemberName Ast)
   } deriving (Show, Eq, Generic)
 
-instance FromJSON Enumerator where
+instance FromJSON Enumeral where
   parseJSON (Object o) = do
     tag <- o .: "tag"
     let tagless = HML.delete "tag" o
     if HML.size o == 1
-      then pure $ Enumerator tag Nothing
-      else Enumerator tag <$> (Just <$> parseJSON (Object tagless))
+      then pure $ Enumeral tag Nothing
+      else Enumeral tag <$> (Just <$> parseJSON (Object tagless))
   parseJSON _ = mzero
 
 data Struct = Struct
