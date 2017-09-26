@@ -3,7 +3,6 @@ module Colorless.Runtime.Ast
   ( Ast(..)
   , Ref(..)
   , If(..)
-  , Set(..)
   , Get(..)
   , Define(..)
   , Lambda(..)
@@ -34,7 +33,6 @@ import Colorless.Runtime.Types
 data Ast
   = Ast'Ref Ref
   | Ast'If If
-  | Ast'Set Set
   | Ast'Get Get
   | Ast'Define Define
   | Ast'Lambda Lambda
@@ -55,7 +53,6 @@ instance FromJSON Ast where
   parseJSON v
     =   (Ast'Ref <$> parseJSON v)
     <|> (Ast'If <$> parseJSON v)
-    <|> (Ast'Set <$> parseJSON v)
     <|> (Ast'Get <$> parseJSON v)
     <|> (Ast'Define <$> parseJSON v)
     <|> (Ast'Lambda <$> parseJSON v)
@@ -88,17 +85,6 @@ data If = If
 instance FromJSON If where
   parseJSON (Array arr) = case V.toList arr of
     ["if", cond, true, false] -> If <$> parseJSON cond <*> parseJSON true <*> parseJSON false
-    _ -> mzero
-  parseJSON _ = mzero
-
-data Set = Set
-  { var :: Symbol
-  , expr :: Ast
-  } deriving (Show, Eq)
-
-instance FromJSON Set where
-  parseJSON (Array arr) = case V.toList arr of
-    ["set", var, expr] -> Set <$> parseJSON var <*> parseJSON expr
     _ -> mzero
   parseJSON _ = mzero
 

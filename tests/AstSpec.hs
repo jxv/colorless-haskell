@@ -49,11 +49,6 @@ spec = do
           (Ast'Const $ Const'String "true")
           (Ast'Const $ Const'String "false"))
 
-    context "Set" $ do
-      it "simple" $ shouldBe
-        (parseAst $ Array $ V.fromList ["set", "myVar", Bool False])
-        (Just $ Ast'Set $ Set "myVar" (Ast'Const $ Const'Bool False))
-
     context "Get" $ do
       it "simple yet not semantically correct" $ shouldBe
         (parseAst $ Array $ V.fromList ["get", Array $ V.fromList ["a","b","c"], Bool False])

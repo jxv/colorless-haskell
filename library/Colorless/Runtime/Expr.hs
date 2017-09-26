@@ -9,7 +9,6 @@ module Colorless.Runtime.Expr
   , UnWrap(..)
   , UnStruct(..)
   , If(..)
-  , Set(..)
   , Get(..)
   , Define(..)
   , Lambda(..)
@@ -88,7 +87,6 @@ data Expr m
   | Expr'UnVal (UnVal m)
   | Expr'Val Val
   | Expr'If (If m)
-  | Expr'Set (Set m)
   | Expr'Get (Get m)
   | Expr'Define (Define m)
   | Expr'Lambda (Lambda m)
@@ -127,11 +125,6 @@ data If m = If
   { cond :: Expr m
   , true :: Expr m
   , false :: Expr m
-  } deriving (Show, Eq)
-
-data Set m = Set
-  { var :: Symbol
-  , expr :: Expr m
   } deriving (Show, Eq)
 
 data Get m = Get
@@ -216,7 +209,6 @@ fromAst :: Monad m => Ast -> Expr m
 fromAst = \case
   Ast'Ref Ast.Ref{symbol} -> Expr'Ref $ Ref symbol
   Ast'If Ast.If{cond,true,false} -> Expr'If $ If (fromAst cond) (fromAst true) (fromAst false)
-  Ast'Set Ast.Set{var,expr} -> Expr'Set $ Set var (fromAst expr)
   Ast'Get Ast.Get{path,val} -> Expr'Get $ Get path (fromAst val)
   Ast'Define Ast.Define{var,expr} -> Expr'Define $ Define var (fromAst expr)
   Ast'Lambda Ast.Lambda{args,expr} -> Expr'Lambda $ Lambda args (fromAst expr)
@@ -264,7 +256,6 @@ eval expr envRef = case expr of
   Expr'If if' -> evalIf if' envRef
   Expr'UnVal unVal -> evalUnVal unVal envRef
   Expr'Val val -> return $ Expr'Val val
-  Expr'Set set -> evalSet set envRef
   Expr'Get get -> evalGet get envRef
   Expr'Define define -> evalDefine define envRef
   Expr'Lambda lambda -> evalLambda lambda envRef
@@ -313,16 +304,6 @@ evalIf If{cond, true, false} envRef = do
       envRef'' <- liftIO $ newIORef =<< readIORef envRef
       eval (if cond' then true else false) envRef''
     _ -> runtimeThrow RuntimeError'IncompatibleType
-
-evalSet :: (MonadIO m, RuntimeThrower m) => Set m -> IORef (Env m) -> Eval m (Expr m)
-evalSet Set{var = var@(Symbol var'), expr} envRef = do
-  expr' <- eval expr envRef
-  env <- liftIO $ readIORef envRef
-  case Map.lookup var env of
-    Nothing -> runtimeThrow $ RuntimeError'UnknownVariable var'
-    Just v -> do
-      liftIO $ writeIORef v expr'
-      return expr'
 
 evalGet :: (MonadIO m, RuntimeThrower m) => Get m -> IORef (Env m) -> Eval m (Expr m)
 evalGet Get{path,expr} envRef = getter path =<< eval expr envRef
