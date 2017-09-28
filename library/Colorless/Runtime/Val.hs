@@ -160,9 +160,8 @@ instance ToVal Double where
     toVal d = Val'Const $ Const'Number $ fromFloatDigits d
 
 instance ToVal a => ToVal (Maybe a) where
-  toVal m = Val'ApiVal $ ApiVal'Enumeral $ case m of
-    Nothing -> Enumeral "None" Nothing
-    Just s -> Enumeral "Some" (Just $ Map.singleton "some" (toVal s))
+  toVal Nothing = Val'Const Const'Null
+  toVal (Just v) = toVal v
 
 instance (ToVal a, ToVal b) => ToVal (Either a b) where
   toVal m = Val'ApiVal $ ApiVal'Enumeral $ case m of
@@ -256,11 +255,8 @@ instance FromVal Double where
   fromVal _ = Nothing
 
 instance FromVal a => FromVal (Maybe a) where
-  fromVal (Val'ApiVal (ApiVal'Enumeral (Enumeral tag m))) = case (tag,m) of
-    ("Some",Just m') -> fromVal <$> Map.lookup "some" m'
-    ("None",Nothing) -> Just Nothing
-    _ -> Nothing
-  fromVal _ = Nothing
+  fromVal (Val'Const Const'Null) = Just Nothing
+  fromVal v = Just <$> fromVal v
 
 instance (FromVal a, FromVal b) => FromVal (Either a b) where
   fromVal (Val'ApiVal (ApiVal'Enumeral (Enumeral tag m))) = case (tag,m) of

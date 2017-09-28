@@ -24,8 +24,8 @@ spec = do
   describe "parse types from val" $ do
     context "Option" $ do
       it "None" $ shouldBe
-        (fromVal $ Val'ApiVal $ ApiVal'Enumeral $ Enumeral "None" Nothing)
+        (fromVal $ Val'Const Const'Null)
         (Just Nothing :: Maybe (Maybe Bool))
       it "Some" $ shouldBe
-        (fromVal $ Val'ApiVal $ ApiVal'Enumeral $ Enumeral "Some" $ Just $ Map.fromList [("some", Val'Const $ Const'Bool $ True)])
+        (fromVal $ Val'Const $ Const'Bool $ True)
         (Just (Just True) :: Maybe (Maybe Bool))
