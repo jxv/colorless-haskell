@@ -38,13 +38,13 @@ instance FromJSON Version
 
 data Request = Request
   { meta :: Value
-  , calls :: [Value]
+  , query :: [Value]
   } deriving (Show, Eq)
 
 instance FromJSON Request where
   parseJSON (Object o) = Request
     <$> o .: "meta"
-    <*> o .: "calls"
+    <*> o .: "query"
   parseJSON _ = mzero
 
 data RuntimeError
@@ -64,7 +64,7 @@ data RuntimeError
   | RuntimeError'ColorlessMajorVersionTooHigh
   | RuntimeError'ColorlessMinorVersionTooHigh
   | RuntimeError'UnparsableMeta
-  | RuntimeError'UnparsableCalls
+  | RuntimeError'UnparsableQuery
   | RuntimeError'NoImplementation
   | RuntimeError'NotMember
   deriving (Show, Eq)
@@ -87,7 +87,7 @@ instance ToJSON RuntimeError where
     RuntimeError'ColorlessMajorVersionTooLow -> e "ColorlessMajorVersionTooLow"
     RuntimeError'ColorlessMinorVersionTooHigh -> e "ColorlessMinorVersionTooHigh"
     RuntimeError'UnparsableMeta -> e "UnparsableMeta"
-    RuntimeError'UnparsableCalls -> e "UnparsableCalls"
+    RuntimeError'UnparsableQuery -> e "UnparsableQuery"
     RuntimeError'NoImplementation -> e "NoImplementation"
     RuntimeError'NotMember -> e "NotMember"
     where
