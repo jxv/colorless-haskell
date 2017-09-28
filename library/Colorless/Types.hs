@@ -9,11 +9,14 @@ module Colorless.Types
   , RuntimeError(..)
   , RuntimeThrower(..)
   , Options(..)
+  --
+  , Symbol(..)
   ) where
 
 import Control.Monad (mzero)
 import Data.Aeson
 import Data.Text (Text)
+import Data.String (IsString)
 import GHC.Generics
 
 newtype Major = Major Int
@@ -121,3 +124,8 @@ instance RuntimeThrower IO where
 data Options = Options
   { variableLimit :: Maybe Int
   } deriving (Show, Eq)
+
+--
+
+newtype Symbol = Symbol Text
+  deriving (Show, Eq, Ord, FromJSON, IsString)

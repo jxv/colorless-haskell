@@ -39,6 +39,7 @@ library
     , unordered-containers
     , vector
   exposed-modules:
+      Colorless.Client.Expr
       Colorless.Endpoint
       Colorless.Server.Ast
       Colorless.Server.Expr

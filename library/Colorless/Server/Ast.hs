@@ -28,6 +28,7 @@ import Data.Aeson
 import Data.Map (Map)
 import GHC.Generics (Generic)
 
+import Colorless.Types
 import Colorless.Server.Types
 
 data Ast

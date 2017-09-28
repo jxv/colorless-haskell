@@ -1,4 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
 module Colorless.Server.Expr
   ( Expr(..)
   , EvalConfig(..)

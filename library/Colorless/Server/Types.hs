@@ -1,6 +1,5 @@
 module Colorless.Server.Types
-  ( Symbol(..)
-  , Type(..)
+  ( Type(..)
   , TypeName(..)
   , MemberName(..)
   , EnumeralName(..)
@@ -22,8 +21,7 @@ import Data.Word
 import Data.Scientific
 import Data.String (IsString)
 
-newtype Symbol = Symbol Text
-  deriving (Show, Eq, Ord, FromJSON, IsString)
+import Colorless.Types
 
 data Type = Type
   { n :: TypeName
