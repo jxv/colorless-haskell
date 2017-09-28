@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Colorless.Runtime.Val
+module Colorless.Server.Val
   ( Val(..)
   , ApiVal(..)
   , Wrap(..)
@@ -27,7 +27,7 @@ import Data.Word
 import Data.Scientific
 import GHC.Generics (Generic)
 
-import Colorless.Runtime.Types
+import Colorless.Server.Types
 
 data Val
   = Val'Const Const

@@ -1,5 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
-module Colorless.Runtime.Expr
+module Colorless.Server.Expr
   ( Expr(..)
   , EvalConfig(..)
   --
@@ -54,11 +54,11 @@ import Data.IORef (IORef, readIORef, newIORef, writeIORef)
 import Data.Scientific (toBoundedInteger, Scientific)
 import Data.Text (Text)
 
-import qualified Colorless.Runtime.Ast as Ast
+import qualified Colorless.Server.Ast as Ast
 import Colorless.Types
-import Colorless.Runtime.Types
-import Colorless.Runtime.Val
-import Colorless.Runtime.Ast (Ast(..))
+import Colorless.Server.Types
+import Colorless.Server.Val
+import Colorless.Server.Ast (Ast(..))
 
 data EvalConfig m = EvalConfig
   { options :: Options

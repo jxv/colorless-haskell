@@ -3,8 +3,8 @@ module ExprSpec where
 import Test.Hspec
 
 -- import Colorless.Types
--- import Colorless.Runtime.Types
--- import Colorless.Runtime.Expr
+-- import Colorless.Server.Types
+-- import Colorless.Server.Expr
 
 spec :: Spec
 spec = do

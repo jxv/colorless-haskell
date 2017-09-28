@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Colorless.Runtime.Ast
+module Colorless.Server.Ast
   ( Ast(..)
   , Ref(..)
   , If(..)
@@ -28,7 +28,7 @@ import Data.Aeson
 import Data.Map (Map)
 import GHC.Generics (Generic)
 
-import Colorless.Runtime.Types
+import Colorless.Server.Types
 
 data Ast
   = Ast'Ref Ref

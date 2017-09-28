@@ -1,4 +1,4 @@
-module Colorless.Runtime.Types
+module Colorless.Server.Types
   ( Symbol(..)
   , Type(..)
   , TypeName(..)

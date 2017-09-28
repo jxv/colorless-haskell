@@ -6,8 +6,8 @@ import Test.Hspec
 import Data.Aeson
 import Data.Aeson.Types
 
-import Colorless.Runtime.Types
-import Colorless.Runtime.Ast
+import Colorless.Server.Types
+import Colorless.Server.Ast
 
 parseAst :: Value -> Maybe Ast
 parseAst = parseMaybe parseJSON

@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           colorless
-version:        2.0.0
+version:        2.1.0
 synopsis:       Colorless
 description:    Colorless
 category:       Web
@@ -40,10 +40,10 @@ library
     , vector
   exposed-modules:
       Colorless.Endpoint
-      Colorless.Runtime.Ast
-      Colorless.Runtime.Expr
-      Colorless.Runtime.Types
-      Colorless.Runtime.Val
+      Colorless.Server.Ast
+      Colorless.Server.Expr
+      Colorless.Server.Types
+      Colorless.Server.Val
       Colorless.Types
   default-language: Haskell2010
 

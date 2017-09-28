@@ -6,8 +6,8 @@ import Data.Aeson
 import Data.Aeson.Types
 import Data.Text (Text)
 
-import Colorless.Runtime.Types
-import Colorless.Runtime.Val
+import Colorless.Server.Types
+import Colorless.Server.Val
 
 spec :: Spec
 spec = do
