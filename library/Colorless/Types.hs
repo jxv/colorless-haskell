@@ -38,7 +38,7 @@ instance FromJSON Version
 
 data Request = Request
   { meta :: Value
-  , query :: [Value]
+  , query :: Value
   } deriving (Show, Eq)
 
 instance FromJSON Request where
