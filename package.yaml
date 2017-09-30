@@ -55,6 +55,7 @@ tests:
     - hspec
     - scientific
     - text
+    - tuple
     - vector
     ghc-options:
     - -rtsopts

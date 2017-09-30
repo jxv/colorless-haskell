@@ -433,7 +433,7 @@ emptyEnv = do
   div' <- newIORef divExpr
   newIORef $ Map.fromList
     [ ("==", eq)
-    , ("/=", neq)
+    , ("!=", neq)
     , ("+", add)
     , ("-", sub)
     , ("*", mul)

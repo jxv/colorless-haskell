@@ -63,6 +63,7 @@ test-suite colorless-suite
     , hspec
     , scientific
     , text
+    , tuple
     , vector
   other-modules:
       AstSpec
