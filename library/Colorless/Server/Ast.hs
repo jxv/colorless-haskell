@@ -7,6 +7,7 @@ module Colorless.Server.Ast
   , Define(..)
   , Lambda(..)
   , List(..)
+  , Tuple(..)
   , Begin(..)
   , FnCall(..)
   , Enumeral(..)
@@ -37,6 +38,7 @@ data Ast
   | Ast'Define Define
   | Ast'Lambda Lambda
   | Ast'List List
+  | Ast'Tuple Tuple
   | Ast'Begin Begin
   | Ast'FnCall FnCall
   | Ast'WrapCall WrapCall
@@ -57,6 +59,7 @@ instance FromJSON Ast where
     <|> (Ast'Define <$> parseJSON v)
     <|> (Ast'Lambda <$> parseJSON v)
     <|> (Ast'List <$> parseJSON v)
+    <|> (Ast'Tuple <$> parseJSON v)
     <|> (Ast'Begin <$> parseJSON v)
     <|> (Ast'FnCall <$> parseJSON v)
     <|> (Ast'EnumerationCall <$> parseJSON v)
@@ -133,6 +136,14 @@ data List = List
 
 instance FromJSON List where
   parseJSON (Object o) = List <$> o .: "List"
+  parseJSON _ = mzero
+
+data Tuple = Tuple
+  { tuple :: [Ast]
+  } deriving (Show, Eq)
+
+instance FromJSON Tuple where
+  parseJSON (Object o) = Tuple <$> o .: "Tuple"
   parseJSON _ = mzero
 
 data Begin = Begin

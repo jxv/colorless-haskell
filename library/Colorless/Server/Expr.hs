@@ -91,6 +91,7 @@ data Expr m
   | Expr'Define (Define m)
   | Expr'Lambda (Lambda m)
   | Expr'List (List m)
+  | Expr'Tuple (Tuple m)
   | Expr'Fn (Fn m)
   | Expr'FnCall (FnCall m)
   | Expr'Begin (Begin m)
@@ -154,6 +155,10 @@ data List m = List
   { list :: [Expr m]
   } deriving (Show, Eq)
 
+data Tuple m = Tuple
+  { tuple :: [Expr m]
+  } deriving (Show, Eq)
+
 data Begin m = Begin
   { exprs :: [Expr m]
   } deriving (Show, Eq)
@@ -213,6 +218,7 @@ fromAst = \case
   Ast'Define Ast.Define{var,expr} -> Expr'Define $ Define var (fromAst expr)
   Ast'Lambda Ast.Lambda{args,expr} -> Expr'Lambda $ Lambda args (fromAst expr)
   Ast'List Ast.List{list} -> Expr'List $ List $ map fromAst list
+  Ast'Tuple Ast.Tuple{tuple} -> Expr'Tuple $ Tuple $ map fromAst tuple
   Ast'Begin Ast.Begin{vals} -> Expr'Begin $ Begin $ map fromAst vals
   Ast'FnCall Ast.FnCall{fn,args} -> Expr'FnCall $ FnCall (fromAst fn) (map fromAst args)
   Ast'WrapCall Ast.WrapCall{n,w} -> Expr'ApiUnCall $ ApiUnCall'WrapUnCall $ WrapUnCall n (fromAst w)
@@ -261,12 +267,15 @@ eval expr envRef = case expr of
   Expr'Lambda lambda -> evalLambda lambda envRef
   Expr'Fn _ -> return expr -- throw error?
   Expr'List list -> evalList list envRef
+  Expr'Tuple tuple -> evalTuple tuple envRef
   Expr'FnCall call -> evalFnCall call envRef
   Expr'Begin begin -> evalBegin begin envRef
   Expr'ApiUnCall apiUnCall -> evalApiUnCall apiUnCall envRef
 
 forceVal :: (RuntimeThrower m) => Expr m -> Eval m Val
 forceVal (Expr'Val v) = return v
+forceVal (Expr'List (List l)) = Val'List <$> mapM forceVal l
+forceVal (Expr'Tuple (Tuple t)) = Val'List <$> mapM forceVal t
 forceVal _ = runtimeThrow RuntimeError'IncompatibleType
 
 evalRef :: (MonadIO m, RuntimeThrower m) => Ref -> IORef (Env m) -> Eval m (Expr m)
@@ -361,6 +370,11 @@ evalList List{list} envRef = do
   list' <- mapM (\item -> eval item envRef) list
   return . Expr'List $ List list'
 
+evalTuple :: (MonadIO m, RuntimeThrower m) => Tuple m -> IORef (Env m)-> Eval m (Expr m)
+evalTuple Tuple{tuple} envRef = do
+  tuple' <- mapM (\item -> eval item envRef) tuple
+  return . Expr'Tuple $ Tuple tuple'
+
 evalBegin :: (MonadIO m, RuntimeThrower m) => Begin m -> IORef (Env m) -> Eval m (Expr m)
 evalBegin Begin{exprs} envRef = case exprs of
   [] -> return $ Expr'Val $ Val'Const $ Const'Null
@@ -432,6 +446,7 @@ emptyEnv = do
   sub <- newIORef subExpr
   mul <- newIORef mulExpr
   div' <- newIORef divExpr
+  tuple <- newIORef tupleExpr
   newIORef $ Map.fromList
     [ ("==", eq)
     , ("/=", neq)
@@ -440,6 +455,7 @@ emptyEnv = do
     , ("*", mul)
     , ("/", div')
     , ("concat", concat')
+    , ("tuple", tuple)
     ]
 
 numExpr :: RuntimeThrower m
@@ -609,7 +625,7 @@ boolExpr num i8 i16 i32 i64 u8 u16 u32 u64 = Expr'Fn . Fn $ \args ->
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
-    _ -> runtimeThrow RuntimeError'TooFewArguments
+    _ -> runtimeThrow RuntimeError'TooManyArguments
     where
       toExpr v = return $ Expr'Val (toVal v)
 
@@ -640,6 +656,12 @@ mulExpr = numExpr (*) (*) (*) (*) (*) (*) (*) (*) (*)
 
 divExpr :: RuntimeThrower m => Expr m
 divExpr = numExpr (/) div div div div div div div div
+
+tupleExpr :: RuntimeThrower m => Expr m
+tupleExpr = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    xs -> return $ Expr'Tuple $ Tuple xs
 
 --
 
