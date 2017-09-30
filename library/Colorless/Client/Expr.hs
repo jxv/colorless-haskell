@@ -5,6 +5,7 @@ module Colorless.Client.Expr
 
   , begin
   , def
+  , defRec
   , iF
 
   , eq
@@ -24,6 +25,43 @@ module Colorless.Client.Expr
   , u16
   , u32
   , u64
+
+  , option
+  , list
+  , either'
+
+  , tuple2
+  , tuple2
+  , tuple3
+  , tuple4
+  , tuple5
+  , tuple6
+  , tuple7
+  , tuple8
+  , tuple9
+  , tuple10
+  , tuple11
+  , tuple12
+  , tuple13
+  , tuple14
+  , tuple15
+  , tuple16
+  , tuple17
+  , tuple18
+  , tuple19
+  , tuple20
+  , tuple21
+  , tuple22
+  , tuple23
+  , tuple24
+  , tuple25
+  , tuple26
+  , tuple27
+  , tuple28
+  , tuple29
+  , tuple30
+  , tuple31
+  , tuple32
 
   , call
   , (-<)
@@ -116,6 +154,15 @@ def symbol@(Symbol sym) expr = Stmt
   , ret = unsafeRef symbol
   }
 
+defRec :: Symbol -> (Expr a -> Expr a) -> Stmt (Expr a)
+defRec symbol@(Symbol sym) f = Stmt
+  { stmts = [toJSON ["def", toJSON sym, toJSON expr]]
+  , ret = fn
+  }
+  where
+    fn = unsafeRef symbol
+    expr = f fn
+
 -- ToJSON constraint is to prevent unevaluated functions
 stmt :: ToJSON a => Expr a -> Stmt (Expr a)
 stmt expr = Stmt [toJSON expr] expr
@@ -177,6 +224,114 @@ u32 = Expr . toJSON
 
 u64 :: Word64 -> Expr Word64
 u64 = Expr . toJSON
+
+--
+
+list :: [Expr a] -> Expr [a]
+list xs = Expr . toJSON $ ["list", toJSON $ map toJSON xs]
+
+option :: Maybe (Expr a) -> Expr (Maybe a)
+option = \case
+  Nothing -> Expr Null
+  Just (Expr v) -> Expr v
+
+either' :: Either (Expr a) (Expr b) -> Expr (Either a b)
+either' = \case
+  Left expr -> Expr $ object [ "tag" .= ("Left" :: T.Text), "left" .= toJSON expr ]
+  Right expr -> Expr $ object [ "tag" .= ("Right" :: T.Text), "right" .= toJSON expr ]
+
+tuple2 :: Expr t1 -> Expr t2 -> Expr (t1, t2)
+tuple2 t1 t2 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2]
+
+tuple3 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr (t1, t2, t3)
+tuple3 t1 t2 t3 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3]
+
+tuple4 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr (t1, t2, t3, t4)
+tuple4 t1 t2 t3 t4 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4]
+
+tuple5 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr (t1, t2, t3, t4, t5)
+tuple5 t1 t2 t3 t4 t5 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5]
+
+tuple6 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr (t1, t2, t3, t4, t5, t6)
+tuple6 t1 t2 t3 t4 t5 t6 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6]
+
+tuple7 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr (t1, t2, t3, t4, t5, t6, t7)
+tuple7 t1 t2 t3 t4 t5 t6 t7 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7]
+
+tuple8 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8)
+tuple8 t1 t2 t3 t4 t5 t6 t7 t8 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8]
+
+tuple9 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9)
+tuple9 t1 t2 t3 t4 t5 t6 t7 t8 t9 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9]
+
+tuple10 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10)
+tuple10 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10]
+
+tuple11 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11)
+tuple11 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11]
+
+tuple12 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12)
+tuple12 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12]
+
+tuple13 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13)
+tuple13 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13]
+
+tuple14 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14)
+tuple14 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14]
+
+tuple15 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15)
+tuple15 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15]
+
+tuple16 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16)
+tuple16 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16]
+
+tuple17 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17)
+tuple17 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17]
+
+tuple18 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18)
+tuple18 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18]
+
+tuple19 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19)
+tuple19 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19]
+
+tuple20 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20)
+tuple20 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20]
+
+tuple21 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21)
+tuple21 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21]
+
+tuple22 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22)
+tuple22 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22]
+
+tuple23 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23)
+tuple23 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23]
+
+tuple24 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24)
+tuple24 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24]
+
+tuple25 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25)
+tuple25 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25]
+
+tuple26 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26)
+tuple26 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26]
+
+tuple27 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27)
+tuple27 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27]
+
+tuple28 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28)
+tuple28 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28]
+
+tuple29 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29)
+tuple29 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29]
+
+tuple30 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30)
+tuple30 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29, toJSON t30]
+
+tuple31 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31)
+tuple31 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29, toJSON t30, toJSON t31]
+
+tuple32 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31 -> Expr t32 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32)
+tuple32 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29, toJSON t30, toJSON t31, toJSON t32]
 
 --
 

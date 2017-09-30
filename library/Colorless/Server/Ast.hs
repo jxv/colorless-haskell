@@ -136,7 +136,9 @@ data List = List
   } deriving (Show, Eq)
 
 instance FromJSON List where
-  parseJSON (Object o) = List <$> o .: "List"
+  parseJSON (Array arr) = case V.toList arr of
+    ("list":(Array xs):[]) -> List <$> mapM parseJSON (V.toList xs)
+    _ -> mzero
   parseJSON _ = mzero
 
 data Tuple = Tuple
@@ -144,7 +146,9 @@ data Tuple = Tuple
   } deriving (Show, Eq)
 
 instance FromJSON Tuple where
-  parseJSON (Object o) = Tuple <$> o .: "Tuple"
+  parseJSON (Array arr) = case V.toList arr of
+    ("tuple":xs) -> Tuple <$> mapM parseJSON xs
+    _ -> mzero
   parseJSON _ = mzero
 
 data Begin = Begin
