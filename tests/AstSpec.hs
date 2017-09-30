@@ -69,6 +69,15 @@ spec = do
         (parseAst $ object [ "List" .= [String "hello"] ])
         (Just $ Ast'List $ List [Ast'Const $ Const'String "hello"])
 
+    context "Tuple" $ do
+      it "one element (sematically too small)" $ shouldBe
+        (parseAst $ object [ "Tuple" .= [String "hello"] ])
+        (Just $ Ast'Tuple $ Tuple [Ast'Const $ Const'String "hello"])
+
+      it "more than one elements" $ shouldBe
+        (parseAst $ object [ "Tuple" .= [String "hello", String "world"] ])
+        (Just $ Ast'Tuple $ Tuple [Ast'Const $ Const'String "hello", Ast'Const $ Const'String "world"])
+
     context "Begin" $ do
       it "simple" $ shouldBe
         (parseAst $ Array $ V.fromList ["begin", Bool True])
