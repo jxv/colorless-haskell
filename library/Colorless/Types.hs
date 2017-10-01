@@ -11,12 +11,19 @@ module Colorless.Types
   , Options(..)
   --
   , Symbol(..)
+  , Type(..)
+  , TypeName(..)
+  , EnumeralName(..)
+  , MemberName(..)
+  , Const(..)
   ) where
 
+import qualified Data.HashMap.Lazy as HML
 import Control.Monad (mzero)
 import Data.Aeson
 import Data.Text (Text)
 import Data.String (IsString)
+import Data.Scientific
 import GHC.Generics
 
 newtype Major = Major Int
@@ -129,3 +136,49 @@ data Options = Options
 
 newtype Symbol = Symbol Text
   deriving (Show, Eq, Ord, FromJSON, IsString)
+
+data Type = Type
+  { n :: TypeName
+  , p :: Maybe Type
+  } deriving (Show, Eq)
+
+instance FromJSON Type where
+  parseJSON = \case
+    String s -> pure $ Type (TypeName s) Nothing
+    Object o -> do
+      n <- o .: "n"
+      case HML.lookup "p" o of
+        Nothing -> pure $ Type n Nothing
+        Just p -> Type n <$> fmap Just (parseJSON p)
+    _ -> mzero
+
+newtype TypeName = TypeName Text
+  deriving (Show, Eq, Ord, FromJSON, IsString)
+
+newtype EnumeralName = EnumeralName Text
+  deriving (Show, Eq, Ord, FromJSON, ToJSON, IsString)
+
+newtype MemberName = MemberName Text
+  deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey, IsString)
+
+data Const
+  = Const'Null
+  | Const'Bool Bool
+  | Const'String Text
+  | Const'Number Scientific
+  deriving (Show, Eq)
+
+instance ToJSON Const where
+  toJSON = \case
+    Const'Null -> Null
+    Const'Bool b -> Bool b
+    Const'String s -> String s
+    Const'Number n -> Number n
+
+instance FromJSON Const where
+  parseJSON = \case
+    Null -> pure $ Const'Null
+    Bool b -> pure $ Const'Bool b
+    String s -> pure $ Const'String s
+    Number n -> pure $ Const'Number n
+    _ -> mzero

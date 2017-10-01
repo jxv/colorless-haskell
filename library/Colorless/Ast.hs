@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Colorless.Server.Ast
+module Colorless.Ast
   ( Ast(..)
   , Ref(..)
   , If(..)
@@ -30,7 +30,6 @@ import Data.Map (Map)
 import GHC.Generics (Generic)
 
 import Colorless.Types
-import Colorless.Server.Types
 
 data Ast
   = Ast'Ref Ref

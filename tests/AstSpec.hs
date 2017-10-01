@@ -6,8 +6,8 @@ import Test.Hspec
 import Data.Aeson
 import Data.Aeson.Types
 
-import Colorless.Server.Types
-import Colorless.Server.Ast
+import Colorless.Types
+import Colorless.Ast
 
 parseAst :: Value -> Maybe Ast
 parseAst = parseMaybe parseJSON
@@ -66,16 +66,16 @@ spec = do
 
     context "List" $ do
       it "simple" $ shouldBe
-        (parseAst $ object [ "List" .= [String "hello"] ])
+        (parseAst $ toJSON [ "list", toJSON [String "hello"] ])
         (Just $ Ast'List $ List [Ast'Const $ Const'String "hello"])
 
     context "Tuple" $ do
       it "one element (sematically too small)" $ shouldBe
-        (parseAst $ object [ "Tuple" .= [String "hello"] ])
+        (parseAst $ toJSON [ "tuple",String "hello" ])
         (Just $ Ast'Tuple $ Tuple [Ast'Const $ Const'String "hello"])
 
       it "more than one elements" $ shouldBe
-        (parseAst $ object [ "Tuple" .= [String "hello", String "world"] ])
+        (parseAst $ toJSON [ "tuple", String "hello", String "world" ])
         (Just $ Ast'Tuple $ Tuple [Ast'Const $ Const'String "hello", Ast'Const $ Const'String "world"])
 
     context "Begin" $ do

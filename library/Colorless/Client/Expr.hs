@@ -31,7 +31,6 @@ module Colorless.Client.Expr
   , either'
 
   , tuple2
-  , tuple2
   , tuple3
   , tuple4
   , tuple5

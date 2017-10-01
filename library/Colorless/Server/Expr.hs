@@ -53,11 +53,11 @@ import Data.IORef (IORef, readIORef, newIORef, writeIORef)
 import Data.Scientific (toBoundedInteger, Scientific)
 import Data.Text (Text)
 
-import qualified Colorless.Server.Ast as Ast
+import qualified Colorless.Ast as Ast
 import Colorless.Types
 import Colorless.Server.Types
 import Colorless.Server.Val
-import Colorless.Server.Ast (Ast(..))
+import Colorless.Ast (Ast(..))
 
 data EvalConfig m = EvalConfig
   { options :: Options
