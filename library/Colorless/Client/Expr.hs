@@ -3,6 +3,7 @@ module Colorless.Client.Expr
   ( Expr
   , Stmt
   , Path
+  , ToArgs
   , stmt
   --
   , begin
@@ -379,8 +380,129 @@ instance ToArgs () where
 instance ToAst a => ToArgs (Expr a) where
   toArgs x = [toAst x]
 
-instance (ToAst t1, ToAst t2) => ToArgs (t1,t2) where
-  toArgs (t1,t2) = [toAst t1, toAst t2]
+instance (ToAst t1, ToAst t2) => ToArgs (t1, t2) where
+  toArgs (t1, t2) = [toAst t1, toAst t2]
+
+instance (ToAst t1, ToAst t2, ToAst t3) => ToArgs (t1, t2, t3) where
+  toArgs (t1, t2, t3) = [toAst t1, toAst t2, toAst t3]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4) => ToArgs (t1, t2, t3, t4) where
+  toArgs (t1, t2, t3, t4) = [toAst t1, toAst t2, toAst t3, toAst t4]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5) => ToArgs (t1, t2, t3, t4, t5) where
+  toArgs (t1, t2, t3, t4, t5) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6) => ToArgs (t1, t2, t3, t4, t5, t6) where
+  toArgs (t1, t2, t3, t4, t5, t6) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7) => ToArgs (t1, t2, t3, t4, t5, t6, t7) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27, ToAst t28) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27, ToAst t28, ToAst t29) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27, ToAst t28, ToAst t29, ToAst t30) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27, ToAst t28, ToAst t29, ToAst t30, ToAst t31) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30, toAst t31]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27, ToAst t28, ToAst t29, ToAst t30, ToAst t31, ToAst t32) => ToArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32) where
+  toArgs (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32) = [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30, toAst t31, toAst t32]
+
+{-
+var tuples = [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32];
+var toArgs = n => {
+  if (n < 2) {
+    return '';
+  }
+
+  var l = ['instance (ToAst t1'];
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', ToAst t', i + 1])
+  }
+  l = l.concat([') => ToArgs (t1']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', t', i + 1])
+  }
+  l = l.concat([') where\n']);
+
+  l = l.concat(['  toArgs (t1']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', t', i + 1]);
+  }
+  l = l.concat([') = [toAst t1']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', toAst t', i + 1]);
+  }
+  l = l.concat([']\n\n']);
+
+  return l.join('');
+};
+-}
 
 call :: ToArgs b => Expr (b -> Expr a) -> b -> Expr a
 call f args = Expr $ Ast'FnCall $ Ast.FnCall (toAst f) (toArgs args)
