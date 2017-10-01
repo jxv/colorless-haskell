@@ -23,6 +23,7 @@ module Colorless.Ast
 
 import qualified Data.HashMap.Lazy as HML
 import qualified Data.Vector as V
+import qualified Data.Map as Map
 import Control.Monad (mzero)
 import Control.Applicative ((<|>))
 import Data.Text (Text)
@@ -118,6 +119,26 @@ instance FromJSON Ast where
     <|> (Ast'Wrap <$> parseJSON v)
     <|> (Ast'Const <$> parseJSON v)
 
+instance ToJSON Ast where
+  toJSON = \case
+    Ast'Ref a -> toJSON a
+    Ast'If a -> toJSON a
+    Ast'Get a -> toJSON a
+    Ast'Define a -> toJSON a
+    Ast'Lambda a -> toJSON a
+    Ast'List a -> toJSON a
+    Ast'Tuple a -> toJSON a
+    Ast'Begin a -> toJSON a
+    Ast'FnCall a -> toJSON a
+    Ast'EnumerationCall a -> toJSON a
+    Ast'WrapCall a -> toJSON a
+    Ast'StructCall a -> toJSON a
+    Ast'HollowCall a -> toJSON a
+    Ast'Enumeral a -> toJSON a
+    Ast'Struct a -> toJSON a
+    Ast'Wrap a -> toJSON a
+    Ast'Const a -> toJSON a
+
 data Ref = Ref
   { symbol :: Symbol
   } deriving (Show, Eq)
@@ -125,6 +146,9 @@ data Ref = Ref
 instance FromJSON Ref where
   parseJSON (Object o) = Ref <$> o .: "@"
   parseJSON _ = mzero
+
+instance ToJSON Ref where
+  toJSON Ref{symbol} = object [ "@" .= symbol ]
 
 data If = If
   { cond :: Ast
@@ -138,6 +162,9 @@ instance FromJSON If where
     _ -> mzero
   parseJSON _ = mzero
 
+instance ToJSON If where
+  toJSON If{cond,true,false} = toJSON ["if", toJSON cond, toJSON true, toJSON false]
+
 data Get = Get
   { path :: [Text]
   , val :: Ast
@@ -149,6 +176,9 @@ instance FromJSON Get where
     _ -> mzero
   parseJSON _ = mzero
 
+instance ToJSON Get where
+  toJSON Get{path,val} = toJSON ["get", toJSON path, toJSON val]
+
 data Define = Define
   { var :: Symbol
   , expr :: Ast
@@ -159,6 +189,9 @@ instance FromJSON Define where
     ["def", var, expr] -> Define <$> parseJSON var <*> parseJSON expr
     _ -> mzero
   parseJSON _ = mzero
+
+instance ToJSON Define where
+  toJSON Define{var,expr} = toJSON ["def", toJSON var, toJSON expr]
 
 data Lambda = Lambda
   { args :: [(Symbol, Type)]
@@ -177,6 +210,9 @@ instance FromJSON Lambda where
         _ -> mzero
   parseJSON _ = mzero
 
+instance ToJSON Lambda where
+  toJSON Lambda{args,expr} = toJSON ["fn", toJSON $ map (Map.fromList . (:[])) args, toJSON expr]
+
 data List = List
   { list :: [Ast]
   } deriving (Show, Eq)
@@ -186,6 +222,9 @@ instance FromJSON List where
     ("list":(Array xs):[]) -> List <$> mapM parseJSON (V.toList xs)
     _ -> mzero
   parseJSON _ = mzero
+
+instance ToJSON List where
+  toJSON List{list} = toJSON $ "list" : map toJSON list
 
 data Tuple = Tuple
   { tuple :: [Ast]
@@ -197,6 +236,9 @@ instance FromJSON Tuple where
     _ -> mzero
   parseJSON _ = mzero
 
+instance ToJSON Tuple where
+  toJSON Tuple{tuple} = toJSON $ "tuple" : map toJSON tuple
+
 data Begin = Begin
   { vals :: [Ast]
   } deriving (Show, Eq)
@@ -206,6 +248,9 @@ instance FromJSON Begin where
     "begin":xs -> Begin <$> mapM parseJSON xs
     _ -> mzero
   parseJSON _ = mzero
+
+instance ToJSON Begin where
+  toJSON Begin{vals} = toJSON $ "begin" : map toJSON vals
 
 data FnCall = FnCall
   { fn :: Ast
@@ -219,12 +264,17 @@ instance FromJSON FnCall where
     _ -> mzero
   parseJSON _ = mzero
 
+instance ToJSON FnCall where
+  toJSON (FnCall (Ast'Ref (Ref sym)) args) = toJSON $ toJSON sym : map toJSON args
+  toJSON (FnCall fn args) = toJSON $ fn : args
+
 data EnumerationCall = EnumerationCall
   { n :: TypeName
   , e :: Ast
   } deriving (Show, Eq, Generic)
 
 instance FromJSON EnumerationCall
+instance ToJSON EnumerationCall
 
 data WrapCall = WrapCall
   { n :: TypeName
@@ -232,6 +282,7 @@ data WrapCall = WrapCall
   } deriving (Show, Eq, Generic)
 
 instance FromJSON WrapCall
+instance ToJSON WrapCall
 
 data StructCall = StructCall
   { n :: TypeName
@@ -239,12 +290,14 @@ data StructCall = StructCall
   } deriving (Show, Eq, Generic)
 
 instance FromJSON StructCall
+instance ToJSON StructCall
 
 data HollowCall = HollowCall
   { n :: TypeName
   } deriving (Show, Eq, Generic)
 
 instance FromJSON HollowCall
+instance ToJSON HollowCall
 
 data Enumeral = Enumeral
   { tag :: EnumeralName
@@ -260,6 +313,11 @@ instance FromJSON Enumeral where
       else Enumeral tag <$> (Just <$> parseJSON (Object tagless))
   parseJSON _ = mzero
 
+instance ToJSON Enumeral where
+  toJSON Enumeral{tag, m} = case m of
+    Nothing -> object [ "tag" .= tag ]
+    Just m' -> toJSON $ Map.fromList $ ("tag", toJSON tag) : Map.toList (toJSON <$> m')
+
 data Struct = Struct
   { m :: Map MemberName Ast
   } deriving (Show, Eq, Generic)
@@ -267,8 +325,13 @@ data Struct = Struct
 instance FromJSON Struct where
   parseJSON v = Struct <$> parseJSON v
 
+instance ToJSON Struct
+
 data Wrap = Wrap
   { w :: Ast
   } deriving (Show, Eq, Generic)
 
 instance FromJSON Wrap
+
+instance ToJSON Wrap where
+  toJSON (Wrap w) = toJSON w

@@ -140,7 +140,7 @@ data Options = Options
 --
 
 newtype Symbol = Symbol Text
-  deriving (Show, Eq, Ord, FromJSON, IsString)
+  deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey,  IsString)
 
 data Type = Type
   { n :: TypeName
@@ -160,11 +160,15 @@ instance FromJSON Type where
         Just p -> Type n <$> fmap Just (parseJSON p)
     _ -> mzero
 
+instance ToJSON Type where
+  toJSON (Type n Nothing) = toJSON n
+  toJSON (Type n (Just p)) = object [ "n" .= n, "p" .= p ]
+
 newtype TypeName = TypeName Text
-  deriving (Show, Eq, Ord, FromJSON, IsString)
+  deriving (Show, Eq, Ord, FromJSON, ToJSON, IsString)
 
 newtype EnumeralName = EnumeralName Text
-  deriving (Show, Eq, Ord, FromJSON, ToJSON, IsString)
+  deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey, IsString)
 
 newtype MemberName = MemberName Text
   deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey, IsString)
