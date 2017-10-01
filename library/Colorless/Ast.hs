@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Colorless.Ast
   ( Ast(..)
+  , ToAst(..)
   , Ref(..)
   , If(..)
   , Get(..)
@@ -27,6 +28,8 @@ import Control.Applicative ((<|>))
 import Data.Text (Text)
 import Data.Aeson
 import Data.Map (Map)
+import Data.Int
+import Data.Word
 import GHC.Generics (Generic)
 
 import Colorless.Types
@@ -50,6 +53,50 @@ data Ast
   | Ast'Wrap Wrap
   | Ast'Const Const
   deriving (Show, Eq)
+
+class ToAst a where
+  toAst :: a -> Ast
+
+instance ToAst Bool where
+  toAst b = Ast'Const (Const'Bool b)
+
+instance ToAst Text where
+  toAst s = Ast'Const (Const'String s)
+
+instance ToAst Int8 where
+  toAst = num
+
+instance ToAst Int16 where
+  toAst = num
+
+instance ToAst Int32 where
+  toAst = num
+
+instance ToAst Int64 where
+  toAst = num
+
+instance ToAst Word8 where
+  toAst = num
+
+instance ToAst Word16 where
+  toAst = num
+
+instance ToAst Word32 where
+  toAst = num
+
+instance ToAst Word64 where
+  toAst = num
+
+instance ToAst Float where
+  toAst = num
+
+instance ToAst Double where
+  toAst = num
+
+num :: (Num a, ToJSON a) => a -> Ast
+num n = case toJSON n of
+  Number a -> Ast'Const (Const'Number a)
+  _ -> error "should never reach here"
 
 instance FromJSON Ast where
   parseJSON v

@@ -16,14 +16,19 @@ module Colorless.Types
   , EnumeralName(..)
   , MemberName(..)
   , Const(..)
+  --
+  , HasType(..)
   ) where
 
 import qualified Data.HashMap.Lazy as HML
 import Control.Monad (mzero)
 import Data.Aeson
 import Data.Text (Text)
-import Data.String (IsString)
+import Data.String (IsString(..))
 import Data.Scientific
+import Data.Proxy
+import Data.Int
+import Data.Word
 import GHC.Generics
 
 newtype Major = Major Int
@@ -142,6 +147,9 @@ data Type = Type
   , p :: Maybe Type
   } deriving (Show, Eq)
 
+instance IsString Type where
+  fromString s = Type (fromString s) Nothing
+
 instance FromJSON Type where
   parseJSON = \case
     String s -> pure $ Type (TypeName s) Nothing
@@ -182,3 +190,54 @@ instance FromJSON Const where
     String s -> pure $ Const'String s
     Number n -> pure $ Const'Number n
     _ -> mzero
+
+class HasType a where
+  getType :: Proxy a -> Type
+
+instance HasType Bool where
+  getType _ = "Bool"
+
+instance HasType Text where
+  getType _ = "String"
+
+instance HasType Int8 where
+  getType _ = "I8"
+
+instance HasType Int16 where
+  getType _ = "I16"
+
+instance HasType Int32 where
+  getType _ = "I32"
+
+instance HasType Int64 where
+  getType _ = "I64"
+
+instance HasType Word8 where
+  getType _ = "U8"
+
+instance HasType Word16 where
+  getType _ = "U16"
+
+instance HasType Word32 where
+  getType _ = "U32"
+
+instance HasType Word64 where
+  getType _ = "U64"
+
+instance HasType Float where
+  getType _ = "F32"
+
+instance HasType Double where
+  getType _ = "F64"
+
+instance HasType a => HasType (Maybe a) where
+  getType x = Type "Option" (Just $ getType (p x))
+    where
+      p :: Proxy (Maybe a) -> Proxy a
+      p _ = Proxy
+
+instance HasType a => HasType [a] where
+  getType x = Type "List" (Just $ getType (p x))
+    where
+      p :: Proxy [a] -> Proxy a
+      p _ = Proxy

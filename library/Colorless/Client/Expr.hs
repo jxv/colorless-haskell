@@ -1,20 +1,23 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Colorless.Client.Expr
   ( Expr
   , Stmt
+  , Path
   , stmt
-
+  --
   , begin
   , def
   , defRec
   , iF
-
+  , get
+  --
   , eq
   , neq
   , add
   , sub
   , mul
   , divide
-
+  --
   , bool
   , string
   , i8
@@ -25,11 +28,13 @@ module Colorless.Client.Expr
   , u16
   , u32
   , u64
-
+  , f32
+  , f64
+  --
   , option
   , list
   , either'
-
+  --
   , tuple2
   , tuple3
   , tuple4
@@ -61,10 +66,10 @@ module Colorless.Client.Expr
   , tuple30
   , tuple31
   , tuple32
-
+  --
   , call
   , (-<)
-
+  --
   , fn0
   , fn1
   , fn2
@@ -98,40 +103,50 @@ module Colorless.Client.Expr
   , fn30
   , fn31
   , fn32
-
+  --
   , unsafeExpr
   , unsafeRef
   , unsafeStmt
+  , unsafePath
   ) where
 
-import qualified Data.Vector as V
-import Data.Aeson (Value(..), object, (.=), ToJSON(..))
+import qualified Data.Text as T
+import qualified Data.Map as Map
+import Data.Proxy
 import Data.Word
 import Data.Int
 
-import qualified Data.Text as T
+import qualified Colorless.Ast as Ast
+
+import Colorless.Ast (Ast(..), ToAst(..))
 import Colorless.Types
 
 -- Don't export constructors
-newtype Expr a = Expr Value
+newtype Expr a = Expr Ast
   deriving (Show, Eq)
 
-unsafeExpr :: Value -> Expr a
+instance HasType a => HasType (Expr a) where
+  getType p = getType (cvt p)
+    where
+      cvt :: Proxy (Expr a) -> Proxy a
+      cvt _ = Proxy
+
+unsafeExpr :: Ast -> Expr a
 unsafeExpr = Expr
 
 unsafeRef :: Symbol -> Expr a
-unsafeRef (Symbol s) = Expr $ object [ "@" .= s ]
+unsafeRef s = Expr (Ast'Ref $ Ast.Ref s)
 
-instance ToJSON (Expr a) where
-  toJSON (Expr v) = v
+instance ToAst (Expr a) where
+  toAst (Expr v) = v
 
 -- Don't export constructor
 data Stmt a = Stmt
-  { stmts :: [Value]
+  { stmts :: [Ast]
   , ret :: a
   } deriving (Show, Eq)
 
-unsafeStmt :: [Value] -> a -> Stmt a
+unsafeStmt :: [Ast] -> a -> Stmt a
 unsafeStmt = Stmt
 
 instance Functor Stmt where
@@ -148,525 +163,1678 @@ instance Monad Stmt where
     in Stmt (stmts x ++ stmts y) (ret y)
 
 def :: Symbol -> Expr a -> Stmt (Expr a)
-def symbol@(Symbol sym) expr = Stmt
-  { stmts = [toJSON ["def", toJSON sym, toJSON expr]]
+def symbol (Expr ast) = Stmt
+  { stmts = [Ast'Define $ Ast.Define symbol ast]
   , ret = unsafeRef symbol
   }
 
 defRec :: Symbol -> (Expr a -> Expr a) -> Stmt (Expr a)
-defRec symbol@(Symbol sym) f = Stmt
-  { stmts = [toJSON ["def", toJSON sym, toJSON expr]]
+defRec symbol f = Stmt
+  { stmts = [Ast'Define $ Ast.Define symbol ast]
   , ret = fn
   }
   where
     fn = unsafeRef symbol
-    expr = f fn
+    Expr ast = f fn
 
--- ToJSON constraint is to prevent unevaluated functions
-stmt :: ToJSON a => Expr a -> Stmt (Expr a)
-stmt expr = Stmt [toJSON expr] expr
+-- ToAst constraint is to prevent unevaluated functions
+stmt :: ToAst a => Expr a -> Stmt (Expr a)
+stmt expr = Stmt [toAst expr] expr
 
 begin :: Stmt (Expr b) -> Expr b
-begin (Stmt s _) = Expr $ toJSON $ "begin" : s
+begin (Stmt s _) = Expr (Ast'Begin $ Ast.Begin s)
 
 --
 
 iF :: Expr Bool -> Expr a -> Expr a -> Expr a
-iF cond t f = Expr $ toJSON ["if", toJSON cond, toJSON t, toJSON f]
+iF cond t f = Expr (Ast'If $ Ast.If (toAst cond) (toAst t) (toAst f))
+
+--
+
+newtype Path f = Path [T.Text]
+  deriving (Show, Eq)
+
+unsafePath :: [T.Text] -> Path f
+unsafePath = Path
+
+get :: Path (a -> b) -> Expr a -> Expr b
+get (Path path) expr = Expr $ Ast'Get $ Ast.Get path (toAst expr)
+
+--
 
 eq :: Expr a -> Expr a -> Expr Bool
-eq x y = Expr $ toJSON ["==", toJSON x, toJSON y]
+eq x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "==") [toAst x, toAst y])
 
 neq :: Expr a -> Expr a -> Expr Bool
-neq x y = Expr $ toJSON ["!=", toJSON x, toJSON y]
+neq x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "!=") [toAst x, toAst y])
 
 add :: Num a => Expr a -> Expr a -> Expr a
-add x y = Expr $ toJSON ["+", toJSON x, toJSON y]
+add x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "+") [toAst x, toAst y])
 
 sub :: Num a => Expr a -> Expr a -> Expr a
-sub x y = Expr $ toJSON ["-", toJSON x, toJSON y]
+sub x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "-") [toAst x, toAst y])
 
 mul :: Num a => Expr a -> Expr a -> Expr a
-mul x y = Expr $ toJSON ["*", toJSON x, toJSON y]
+mul x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "*") [toAst x, toAst y])
 
 divide :: Num a => Expr a -> Expr a -> Expr a
-divide x y = Expr $ toJSON ["/", toJSON x, toJSON y]
+divide x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "/") [toAst x, toAst y])
 
 --
 
 bool :: Bool -> Expr Bool
-bool = Expr . toJSON
+bool = Expr . toAst
 
 string :: T.Text -> Expr T.Text
-string = Expr . toJSON
+string = Expr . toAst
 
 i8 :: Int8 -> Expr Int8
-i8 = Expr . toJSON
+i8 = Expr . toAst
 
 i16 :: Int16 -> Expr Int16
-i16 = Expr . toJSON
+i16 = Expr . toAst
 
 i32 :: Int32 -> Expr Int32
-i32 = Expr . toJSON
+i32 = Expr . toAst
 
 i64 :: Int64 -> Expr Int64
-i64 = Expr . toJSON
+i64 = Expr . toAst
 
 u8 :: Word8 -> Expr Word8
-u8 = Expr . toJSON
+u8 = Expr . toAst
 
 u16 :: Word16 -> Expr Word16
-u16 = Expr . toJSON
+u16 = Expr . toAst
 
 u32 :: Word32 -> Expr Word32
-u32 = Expr . toJSON
+u32 = Expr . toAst
 
 u64 :: Word64 -> Expr Word64
-u64 = Expr . toJSON
+u64 = Expr . toAst
+
+f32 :: Float -> Expr Float
+f32 = Expr . toAst
+
+f64 :: Double -> Expr Double
+f64 = Expr . toAst
 
 --
 
 list :: [Expr a] -> Expr [a]
-list xs = Expr . toJSON $ ["list", toJSON $ map toJSON xs]
+list = Expr . Ast'List . Ast.List . map toAst
 
 option :: Maybe (Expr a) -> Expr (Maybe a)
 option = \case
-  Nothing -> Expr Null
+  Nothing -> Expr (Ast'Const Const'Null)
   Just (Expr v) -> Expr v
 
 either' :: Either (Expr a) (Expr b) -> Expr (Either a b)
 either' = \case
-  Left expr -> Expr $ object [ "tag" .= ("Left" :: T.Text), "left" .= toJSON expr ]
-  Right expr -> Expr $ object [ "tag" .= ("Right" :: T.Text), "right" .= toJSON expr ]
-
-tuple2 :: Expr t1 -> Expr t2 -> Expr (t1, t2)
-tuple2 t1 t2 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2]
-
-tuple3 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr (t1, t2, t3)
-tuple3 t1 t2 t3 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3]
-
-tuple4 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr (t1, t2, t3, t4)
-tuple4 t1 t2 t3 t4 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4]
-
-tuple5 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr (t1, t2, t3, t4, t5)
-tuple5 t1 t2 t3 t4 t5 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5]
-
-tuple6 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr (t1, t2, t3, t4, t5, t6)
-tuple6 t1 t2 t3 t4 t5 t6 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6]
-
-tuple7 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr (t1, t2, t3, t4, t5, t6, t7)
-tuple7 t1 t2 t3 t4 t5 t6 t7 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7]
-
-tuple8 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8)
-tuple8 t1 t2 t3 t4 t5 t6 t7 t8 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8]
-
-tuple9 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9)
-tuple9 t1 t2 t3 t4 t5 t6 t7 t8 t9 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9]
-
-tuple10 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10)
-tuple10 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10]
-
-tuple11 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11)
-tuple11 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11]
-
-tuple12 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12)
-tuple12 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12]
-
-tuple13 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13)
-tuple13 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13]
-
-tuple14 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14)
-tuple14 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14]
-
-tuple15 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15)
-tuple15 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15]
-
-tuple16 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16)
-tuple16 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16]
-
-tuple17 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17)
-tuple17 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17]
-
-tuple18 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18)
-tuple18 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18]
-
-tuple19 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19)
-tuple19 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19]
-
-tuple20 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20)
-tuple20 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20]
-
-tuple21 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21)
-tuple21 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21]
-
-tuple22 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22)
-tuple22 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22]
-
-tuple23 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23)
-tuple23 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23]
-
-tuple24 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24)
-tuple24 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24]
-
-tuple25 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25)
-tuple25 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25]
-
-tuple26 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26)
-tuple26 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26]
-
-tuple27 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27)
-tuple27 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27]
-
-tuple28 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28)
-tuple28 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28]
-
-tuple29 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29)
-tuple29 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29]
-
-tuple30 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30)
-tuple30 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29, toJSON t30]
-
-tuple31 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31)
-tuple31 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29, toJSON t30, toJSON t31]
-
-tuple32 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31 -> Expr t32 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32)
-tuple32 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 = Expr . toJSON $ ["tuple", toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29, toJSON t30, toJSON t31, toJSON t32]
+  Left expr -> Expr $ Ast'Enumeral $ Ast.Enumeral "Left" $ Just $ Map.fromList [("left", toAst expr)]
+  Right expr -> Expr $ Ast'Enumeral $ Ast.Enumeral "Right" $ Just $ Map.fromList [("right", toAst expr)]
 
 --
 
-call :: ToJSON b => Expr (b -> Expr a) -> b -> Expr a
-call f x = case toJSON x of
-  Array v -> Expr $ toJSON $ (toJSON f) : V.toList v
-  o -> Expr $ toJSON $ [toJSON f, o]
+tuple2 :: Expr t1 -> Expr t2 -> Expr (t1, t2)
+tuple2 t1 t2 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2]
 
-(-<) :: ToJSON b => Expr (b -> Expr a) -> b -> Expr a
+tuple3 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr (t1, t2, t3)
+tuple3 t1 t2 t3 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3]
+
+tuple4 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr (t1, t2, t3, t4)
+tuple4 t1 t2 t3 t4 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4]
+
+tuple5 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr (t1, t2, t3, t4, t5)
+tuple5 t1 t2 t3 t4 t5 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5]
+
+tuple6 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr (t1, t2, t3, t4, t5, t6)
+tuple6 t1 t2 t3 t4 t5 t6 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6]
+
+tuple7 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr (t1, t2, t3, t4, t5, t6, t7)
+tuple7 t1 t2 t3 t4 t5 t6 t7 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7]
+
+tuple8 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8)
+tuple8 t1 t2 t3 t4 t5 t6 t7 t8 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8]
+
+tuple9 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9)
+tuple9 t1 t2 t3 t4 t5 t6 t7 t8 t9 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9]
+
+tuple10 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10)
+tuple10 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10]
+
+tuple11 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11)
+tuple11 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11]
+
+tuple12 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12)
+tuple12 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12]
+
+tuple13 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13)
+tuple13 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13]
+
+tuple14 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14)
+tuple14 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14]
+
+tuple15 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15)
+tuple15 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15]
+
+tuple16 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16)
+tuple16 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16]
+
+tuple17 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17)
+tuple17 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17]
+
+tuple18 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18)
+tuple18 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18]
+
+tuple19 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19)
+tuple19 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19]
+
+tuple20 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20)
+tuple20 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20]
+
+tuple21 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21)
+tuple21 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21]
+
+tuple22 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22)
+tuple22 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22]
+
+tuple23 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23)
+tuple23 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23]
+
+tuple24 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24)
+tuple24 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24]
+
+tuple25 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25)
+tuple25 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25]
+
+tuple26 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26)
+tuple26 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26]
+
+tuple27 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27)
+tuple27 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27]
+
+tuple28 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28)
+tuple28 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28]
+
+tuple29 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29)
+tuple29 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29]
+
+tuple30 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30)
+tuple30 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30]
+
+tuple31 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31)
+tuple31 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30, toAst t31]
+
+tuple32 :: Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31 -> Expr t32 -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32)
+tuple32 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30, toAst t31, toAst t32]
+
+--
+
+class ToArgs a where
+  toArgs :: a -> [Ast]
+
+instance ToArgs () where
+  toArgs _ = []
+
+instance ToAst a => ToArgs (Expr a) where
+  toArgs x = [toAst x]
+
+instance (ToAst t1, ToAst t2) => ToArgs (t1,t2) where
+  toArgs (t1,t2) = [toAst t1, toAst t2]
+
+call :: ToArgs b => Expr (b -> Expr a) -> b -> Expr a
+call f args = Expr $ Ast'FnCall $ Ast.FnCall (toAst f) (toArgs args)
+
+(-<) :: ToArgs b => Expr (b -> Expr a) -> b -> Expr a
 f -< x = call f x
 
 fn0
   :: Expr a
   -> Expr (() -> Expr a)
-fn0 f = Expr . toJSON $
-  [ "fn"
-  , toJSON ([] :: [Value])
-  , toJSON f
-  ]
+fn0 f = Expr $ Ast'Lambda $ Ast.Lambda
+  []
+  (toAst f)
 
 fn1
-  :: Symbol
+  :: (HasType t1)
+  => Symbol
   -> (Expr t1 -> Expr a)
   -> Expr ((Expr t1) -> Expr a)
-fn1 s1@(Symbol t1) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1]
-  , toJSON $ f (unsafeRef s1)
-  ]
+fn1 s1 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f))]
+  (toAst $ f (unsafeRef s1))
+  where
+    p1 :: (t1 -> a) -> Proxy t1
+    p1 _ = Proxy
 
 fn2
-  :: Symbol -> Symbol
+  :: (HasType t1, HasType t2)
+  => Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr a)
   -> Expr ((Expr t1, Expr t2) -> Expr a)
-fn2 s1@(Symbol t1) s2@(Symbol t2) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2)
-  ]
+fn2 s1 s2 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2))
+  where
+    p1 :: (t1 -> t2 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> a) -> Proxy t2
+    p2 _ = Proxy
 
 fn3
-  :: Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3)
+  => Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3) -> Expr a)
-fn3 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3)
-  ]
+fn3 s1 s2 s3 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3))
+  where
+    p1 :: (t1 -> t2 -> t3 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> a) -> Proxy t3
+    p3 _ = Proxy
 
 fn4
-  :: Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4)
+  => Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4) -> Expr a)
-fn4 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4)
-  ]
+fn4 s1 s2 s3 s4 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> a) -> Proxy t4
+    p4 _ = Proxy
 
 fn5
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5) -> Expr a)
-fn5 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5)
-  ]
+fn5 s1 s2 s3 s4 s5 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> a) -> Proxy t5
+    p5 _ = Proxy
 
 fn6
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6) -> Expr a)
-fn6 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6)
-  ]
+fn6 s1 s2 s3 s4 s5 s6 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> a) -> Proxy t6
+    p6 _ = Proxy
 
 fn7
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7) -> Expr a)
-fn7 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7)
-  ]
+fn7 s1 s2 s3 s4 s5 s6 s7 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> a) -> Proxy t7
+    p7 _ = Proxy
 
 fn8
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8) -> Expr a)
-fn8 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8)
-  ]
+fn8 s1 s2 s3 s4 s5 s6 s7 s8 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> a) -> Proxy t8
+    p8 _ = Proxy
 
 fn9
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9) -> Expr a)
-fn9 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9)
-  ]
+fn9 s1 s2 s3 s4 s5 s6 s7 s8 s9 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> a) -> Proxy t9
+    p9 _ = Proxy
 
 fn10
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10) -> Expr a)
-fn10 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10)
-  ]
+fn10 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> a) -> Proxy t10
+    p10 _ = Proxy
 
 fn11
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11) -> Expr a)
-fn11 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11)
-  ]
+fn11 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> a) -> Proxy t11
+    p11 _ = Proxy
 
 fn12
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12) -> Expr a)
-fn12 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12)
-  ]
+fn12 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> a) -> Proxy t12
+    p12 _ = Proxy
 
 fn13
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13) -> Expr a)
-fn13 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13)
-  ]
+fn13 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> a) -> Proxy t13
+    p13 _ = Proxy
 
 fn14
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14) -> Expr a)
-fn14 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14)
-  ]
+fn14 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> a) -> Proxy t14
+    p14 _ = Proxy
 
 fn15
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15) -> Expr a)
-fn15 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15)
-  ]
+fn15 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> a) -> Proxy t15
+    p15 _ = Proxy
 
 fn16
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16) -> Expr a)
-fn16 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16)
-  ]
+fn16 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> a) -> Proxy t16
+    p16 _ = Proxy
 
 fn17
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17) -> Expr a)
-fn17 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17)
-  ]
+fn17 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> a) -> Proxy t17
+    p17 _ = Proxy
 
 fn18
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18) -> Expr a)
-fn18 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18)
-  ]
+fn18 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> a) -> Proxy t18
+    p18 _ = Proxy
 
 fn19
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19) -> Expr a)
-fn19 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19)
-  ]
+fn19 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> a) -> Proxy t19
+    p19 _ = Proxy
 
 fn20
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20) -> Expr a)
-fn20 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20)
-  ]
+fn20 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> a) -> Proxy t20
+    p20 _ = Proxy
 
 fn21
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21) -> Expr a)
-fn21 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21)
-  ]
+fn21 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> a) -> Proxy t21
+    p21 _ = Proxy
 
 fn22
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22) -> Expr a)
-fn22 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) s22@(Symbol t22) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22)
-  ]
+fn22 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t21
+    p21 _ = Proxy
+    p22 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> a) -> Proxy t22
+    p22 _ = Proxy
 
 fn23
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23) -> Expr a)
-fn23 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) s22@(Symbol t22) s23@(Symbol t23) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23)
-  ]
+fn23 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t21
+    p21 _ = Proxy
+    p22 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t22
+    p22 _ = Proxy
+    p23 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> a) -> Proxy t23
+    p23 _ = Proxy
 
 fn24
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24) -> Expr a)
-fn24 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) s22@(Symbol t22) s23@(Symbol t23) s24@(Symbol t24) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24)
-  ]
+fn24 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t21
+    p21 _ = Proxy
+    p22 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t22
+    p22 _ = Proxy
+    p23 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t23
+    p23 _ = Proxy
+    p24 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> a) -> Proxy t24
+    p24 _ = Proxy
 
 fn25
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25) -> Expr a)
-fn25 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) s22@(Symbol t22) s23@(Symbol t23) s24@(Symbol t24) s25@(Symbol t25) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25)
-  ]
+fn25 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t21
+    p21 _ = Proxy
+    p22 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t22
+    p22 _ = Proxy
+    p23 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t23
+    p23 _ = Proxy
+    p24 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t24
+    p24 _ = Proxy
+    p25 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> a) -> Proxy t25
+    p25 _ = Proxy
 
 fn26
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26) -> Expr a)
-fn26 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) s22@(Symbol t22) s23@(Symbol t23) s24@(Symbol t24) s25@(Symbol t25) s26@(Symbol t26) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26)
-  ]
+fn26 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t21
+    p21 _ = Proxy
+    p22 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t22
+    p22 _ = Proxy
+    p23 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t23
+    p23 _ = Proxy
+    p24 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t24
+    p24 _ = Proxy
+    p25 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t25
+    p25 _ = Proxy
+    p26 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> a) -> Proxy t26
+    p26 _ = Proxy
 
 fn27
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27) -> Expr a)
-fn27 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) s22@(Symbol t22) s23@(Symbol t23) s24@(Symbol t24) s25@(Symbol t25) s26@(Symbol t26) s27@(Symbol t27) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27)
-  ]
+fn27 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t21
+    p21 _ = Proxy
+    p22 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t22
+    p22 _ = Proxy
+    p23 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t23
+    p23 _ = Proxy
+    p24 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t24
+    p24 _ = Proxy
+    p25 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t25
+    p25 _ = Proxy
+    p26 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t26
+    p26 _ = Proxy
+    p27 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> a) -> Proxy t27
+    p27 _ = Proxy
 
 fn28
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28) -> Expr a)
-fn28 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) s22@(Symbol t22) s23@(Symbol t23) s24@(Symbol t24) s25@(Symbol t25) s26@(Symbol t26) s27@(Symbol t27) s28@(Symbol t28) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28)
-  ]
+fn28 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f)), (s28, getType (p28 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t21
+    p21 _ = Proxy
+    p22 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t22
+    p22 _ = Proxy
+    p23 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t23
+    p23 _ = Proxy
+    p24 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t24
+    p24 _ = Proxy
+    p25 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t25
+    p25 _ = Proxy
+    p26 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t26
+    p26 _ = Proxy
+    p27 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t27
+    p27 _ = Proxy
+    p28 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> a) -> Proxy t28
+    p28 _ = Proxy
 
 fn29
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29) -> Expr a)
-fn29 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) s22@(Symbol t22) s23@(Symbol t23) s24@(Symbol t24) s25@(Symbol t25) s26@(Symbol t26) s27@(Symbol t27) s28@(Symbol t28) s29@(Symbol t29) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29)
-  ]
+fn29 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f)), (s28, getType (p28 f)), (s29, getType (p29 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t21
+    p21 _ = Proxy
+    p22 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t22
+    p22 _ = Proxy
+    p23 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t23
+    p23 _ = Proxy
+    p24 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t24
+    p24 _ = Proxy
+    p25 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t25
+    p25 _ = Proxy
+    p26 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t26
+    p26 _ = Proxy
+    p27 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t27
+    p27 _ = Proxy
+    p28 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t28
+    p28 _ = Proxy
+    p29 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> a) -> Proxy t29
+    p29 _ = Proxy
 
 fn30
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29, Expr t30) -> Expr a)
-fn30 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) s22@(Symbol t22) s23@(Symbol t23) s24@(Symbol t24) s25@(Symbol t25) s26@(Symbol t26) s27@(Symbol t27) s28@(Symbol t28) s29@(Symbol t29) s30@(Symbol t30) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29, toJSON t30]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29) (unsafeRef s30)
-  ]
+fn30 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29 s30 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f)), (s28, getType (p28 f)), (s29, getType (p29 f)), (s30, getType (p30 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29) (unsafeRef s30))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t21
+    p21 _ = Proxy
+    p22 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t22
+    p22 _ = Proxy
+    p23 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t23
+    p23 _ = Proxy
+    p24 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t24
+    p24 _ = Proxy
+    p25 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t25
+    p25 _ = Proxy
+    p26 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t26
+    p26 _ = Proxy
+    p27 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t27
+    p27 _ = Proxy
+    p28 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t28
+    p28 _ = Proxy
+    p29 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t29
+    p29 _ = Proxy
+    p30 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> a) -> Proxy t30
+    p30 _ = Proxy
 
 fn31
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30, HasType t31)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29, Expr t30, Expr t31) -> Expr a)
-fn31 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) s22@(Symbol t22) s23@(Symbol t23) s24@(Symbol t24) s25@(Symbol t25) s26@(Symbol t26) s27@(Symbol t27) s28@(Symbol t28) s29@(Symbol t29) s30@(Symbol t30) s31@(Symbol t31) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29, toJSON t30, toJSON t31]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29) (unsafeRef s30) (unsafeRef s31)
-  ]
+fn31 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29 s30 s31 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f)), (s28, getType (p28 f)), (s29, getType (p29 f)), (s30, getType (p30 f)), (s31, getType (p31 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29) (unsafeRef s30) (unsafeRef s31))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t21
+    p21 _ = Proxy
+    p22 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t22
+    p22 _ = Proxy
+    p23 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t23
+    p23 _ = Proxy
+    p24 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t24
+    p24 _ = Proxy
+    p25 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t25
+    p25 _ = Proxy
+    p26 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t26
+    p26 _ = Proxy
+    p27 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t27
+    p27 _ = Proxy
+    p28 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t28
+    p28 _ = Proxy
+    p29 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t29
+    p29 _ = Proxy
+    p30 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t30
+    p30 _ = Proxy
+    p31 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> a) -> Proxy t31
+    p31 _ = Proxy
 
 fn32
-  :: Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30, HasType t31, HasType t32)
+  => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31 -> Expr t32 -> Expr a)
   -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29, Expr t30, Expr t31, Expr t32) -> Expr a)
-fn32 s1@(Symbol t1) s2@(Symbol t2) s3@(Symbol t3) s4@(Symbol t4) s5@(Symbol t5) s6@(Symbol t6) s7@(Symbol t7) s8@(Symbol t8) s9@(Symbol t9) s10@(Symbol t10) s11@(Symbol t11) s12@(Symbol t12) s13@(Symbol t13) s14@(Symbol t14) s15@(Symbol t15) s16@(Symbol t16) s17@(Symbol t17) s18@(Symbol t18) s19@(Symbol t19) s20@(Symbol t20) s21@(Symbol t21) s22@(Symbol t22) s23@(Symbol t23) s24@(Symbol t24) s25@(Symbol t25) s26@(Symbol t26) s27@(Symbol t27) s28@(Symbol t28) s29@(Symbol t29) s30@(Symbol t30) s31@(Symbol t31) s32@(Symbol t32) f = Expr . toJSON $
-  [ "fn"
-  , toJSON [toJSON t1, toJSON t2, toJSON t3, toJSON t4, toJSON t5, toJSON t6, toJSON t7, toJSON t8, toJSON t9, toJSON t10, toJSON t11, toJSON t12, toJSON t13, toJSON t14, toJSON t15, toJSON t16, toJSON t17, toJSON t18, toJSON t19, toJSON t20, toJSON t21, toJSON t22, toJSON t23, toJSON t24, toJSON t25, toJSON t26, toJSON t27, toJSON t28, toJSON t29, toJSON t30, toJSON t31, toJSON t32]
-  , toJSON $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29) (unsafeRef s30) (unsafeRef s31) (unsafeRef s32)
-  ]
+fn32 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29 s30 s31 s32 f = Expr $ Ast'Lambda $ Ast.Lambda
+  [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f)), (s28, getType (p28 f)), (s29, getType (p29 f)), (s30, getType (p30 f)), (s31, getType (p31 f)), (s32, getType (p32 f))]
+  (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29) (unsafeRef s30) (unsafeRef s31) (unsafeRef s32))
+  where
+    p1 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t1
+    p1 _ = Proxy
+    p2 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t2
+    p2 _ = Proxy
+    p3 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t3
+    p3 _ = Proxy
+    p4 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t4
+    p4 _ = Proxy
+    p5 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t5
+    p5 _ = Proxy
+    p6 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t6
+    p6 _ = Proxy
+    p7 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t7
+    p7 _ = Proxy
+    p8 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t8
+    p8 _ = Proxy
+    p9 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t9
+    p9 _ = Proxy
+    p10 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t10
+    p10 _ = Proxy
+    p11 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t11
+    p11 _ = Proxy
+    p12 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t12
+    p12 _ = Proxy
+    p13 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t13
+    p13 _ = Proxy
+    p14 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t14
+    p14 _ = Proxy
+    p15 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t15
+    p15 _ = Proxy
+    p16 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t16
+    p16 _ = Proxy
+    p17 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t17
+    p17 _ = Proxy
+    p18 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t18
+    p18 _ = Proxy
+    p19 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t19
+    p19 _ = Proxy
+    p20 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t20
+    p20 _ = Proxy
+    p21 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t21
+    p21 _ = Proxy
+    p22 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t22
+    p22 _ = Proxy
+    p23 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t23
+    p23 _ = Proxy
+    p24 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t24
+    p24 _ = Proxy
+    p25 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t25
+    p25 _ = Proxy
+    p26 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t26
+    p26 _ = Proxy
+    p27 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t27
+    p27 _ = Proxy
+    p28 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t28
+    p28 _ = Proxy
+    p29 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t29
+    p29 _ = Proxy
+    p30 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t30
+    p30 _ = Proxy
+    p31 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t31
+    p31 _ = Proxy
+    p32 :: (t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> t7 -> t8 -> t9 -> t10 -> t11 -> t12 -> t13 -> t14 -> t15 -> t16 -> t17 -> t18 -> t19 -> t20 -> t21 -> t22 -> t23 -> t24 -> t25 -> t26 -> t27 -> t28 -> t29 -> t30 -> t31 -> t32 -> a) -> Proxy t32
+    p32 _ = Proxy
+
+{-
+var tuples = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32];
+var fn = n => {
+  if (n < 1) {
+    return '';
+  }
+  var l = ['fn', n, '\n'];
+
+  l = l.concat(['  :: (HasType t1']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', HasType t', i + 1]);
+  }
+  l = l.concat([')\n']);
+
+  l = l.concat(['  => Symbol']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([' -> Symbol']);
+  }
+  l = l.concat(['\n']);
+
+  l = l.concat(['  -> (Expr t1'])
+  for (var i = 1; i < n; i++) {
+    l = l.concat([' -> Expr t', i + 1]);
+  }
+  l = l.concat([' -> Expr a)\n']);
+
+  l = l.concat(['  -> Expr ((Expr t1'])
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', Expr t', i + 1]);
+  }
+  l = l.concat([') -> Expr a)\n']);
+
+  l = l.concat(['fn', n]);
+  for (var i = 0; i < n; i++) {
+    l = l.concat([' s', i + 1]);
+  }
+  l = l.concat([' f = Expr $ Ast\'Lambda $ Ast.Lambda\n'])
+
+  l = l.concat(['  [(s1, getType (p1 f))']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', (s', i + 1, ', getType (p', i + 1,' f))']);
+  }
+  l = l.concat([']\n']);
+
+  l = l.concat(['  (toAst $ f']);
+  for (var i = 0; i < n; i++) {
+    l = l.concat([' (unsafeRef s', i + 1, ')']);
+  }
+  l = l.concat([')\n']);
+
+  l = l.concat(['  where\n']);
+  var f = ['(t1'];
+  for (var i = 1; i < n; i++) {
+    f  = f.concat([' -> t', i + 1]);
+  }
+  f = f.concat([' -> a)']).join('');
+  for (var i = 0; i < n; i++) {
+    l = l.concat([
+      '    p', i + 1, ' :: ', f, ' -> Proxy t', i + 1, '\n',
+      '    p', i + 1, ' _ = Proxy\n',
+    ]);
+  }
+  l = l.concat(['\n']);
+
+  return l.join('');
+};
+-}
