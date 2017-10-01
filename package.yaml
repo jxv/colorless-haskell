@@ -1,5 +1,5 @@
 name: colorless
-version: '2.1.0'
+version: '2.2.0'
 category: Web
 synopsis: Colorless
 description: Colorless
@@ -55,6 +55,7 @@ tests:
     - hspec
     - scientific
     - text
+    - tuple
     - vector
     ghc-options:
     - -rtsopts

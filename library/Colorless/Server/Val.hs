@@ -27,6 +27,7 @@ import Data.Word
 import Data.Scientific
 import GHC.Generics (Generic)
 
+import Colorless.Types
 import Colorless.Server.Types
 
 data Val
