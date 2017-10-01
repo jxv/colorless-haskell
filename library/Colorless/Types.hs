@@ -144,25 +144,26 @@ newtype Symbol = Symbol Text
 
 data Type = Type
   { n :: TypeName
-  , p :: Maybe Type
+  , p :: [Type]
   } deriving (Show, Eq)
 
 instance IsString Type where
-  fromString s = Type (fromString s) Nothing
+  fromString s = Type (fromString s) []
 
 instance FromJSON Type where
   parseJSON = \case
-    String s -> pure $ Type (TypeName s) Nothing
+    String s -> pure $ Type (TypeName s) []
     Object o -> do
       n <- o .: "n"
       case HML.lookup "p" o of
-        Nothing -> pure $ Type n Nothing
-        Just p -> Type n <$> fmap Just (parseJSON p)
+        Nothing -> pure $ Type n []
+        Just p -> Type n <$> (parseJSON p)
     _ -> mzero
 
 instance ToJSON Type where
-  toJSON (Type n Nothing) = toJSON n
-  toJSON (Type n (Just p)) = object [ "n" .= n, "p" .= p ]
+  toJSON (Type n []) = toJSON n
+  toJSON (Type n [p]) = object [ "n" .= n, "p" .= toJSON p ]
+  toJSON (Type n ps) = object [ "n" .= n, "p" .= map toJSON ps ]
 
 newtype TypeName = TypeName Text
   deriving (Show, Eq, Ord, FromJSON, ToJSON, IsString)
@@ -235,13 +236,21 @@ instance HasType Double where
   getType _ = "F64"
 
 instance HasType a => HasType (Maybe a) where
-  getType x = Type "Option" (Just $ getType (p x))
+  getType x = Type "Option" [getType (p x)]
     where
       p :: Proxy (Maybe a) -> Proxy a
       p _ = Proxy
 
 instance HasType a => HasType [a] where
-  getType x = Type "List" (Just $ getType (p x))
+  getType x = Type "List" [getType (p x)]
     where
       p :: Proxy [a] -> Proxy a
       p _ = Proxy
+
+instance (HasType e, HasType a) => HasType (Either e a) where
+  getType x = Type "Either" [getType (p1 x), getType (p2 x)]
+    where
+      p1 :: Proxy (Either e a) -> Proxy e
+      p1 _ = Proxy
+      p2 :: Proxy (Either e a) -> Proxy a
+      p2 _ = Proxy

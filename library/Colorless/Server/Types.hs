@@ -10,13 +10,11 @@ module Colorless.Server.Types
   , Prim(..)
   ) where
 
-import Control.Monad (mzero)
-import Data.Aeson (FromJSON(..), FromJSONKey, ToJSONKey, Value(..), (.:), ToJSON(..))
+import Data.Aeson (ToJSON(..))
 import Data.Text (Text)
 import Data.Map (Map)
 import Data.Int
 import Data.Word
-import Data.String (IsString)
 
 import Colorless.Types
 
