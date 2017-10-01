@@ -11,6 +11,8 @@ module Colorless.Client.Expr
   , defRec
   , iF
   , get
+  , dot
+  , (<.>)
   --
   , eq
   , neq
@@ -194,6 +196,12 @@ iF cond t f = Expr (Ast'If $ Ast.If (toAst cond) (toAst t) (toAst f))
 
 newtype Path f = Path [T.Text]
   deriving (Show, Eq)
+
+dot :: Path (a -> b) -> Path (b -> c) -> Path (a -> c)
+dot (Path p1) (Path p2) = Path (p1 ++ p2)
+
+(<.>) :: Path (a -> b) -> Path (b -> c) -> Path (a -> c)
+(<.>) = dot
 
 unsafePath :: [T.Text] -> Path f
 unsafePath = Path
