@@ -36,7 +36,7 @@ module Colorless.Client.Expr
   --
   , option
   , list
-  , either'
+  , eitheR
   --
   , tuple2
   , tuple3
@@ -277,8 +277,8 @@ option = \case
   Nothing -> Expr (Ast'Const Const'Null)
   Just (Expr v) -> Expr v
 
-either' :: Either (Expr a) (Expr b) -> Expr (Either a b)
-either' = \case
+eitheR :: Either (Expr a) (Expr b) -> Expr (Either a b)
+eitheR = \case
   Left expr -> Expr $ Ast'Enumeral $ Ast.Enumeral "Left" $ Just $ Map.fromList [("left", toAst expr)]
   Right expr -> Expr $ Ast'Enumeral $ Ast.Enumeral "Right" $ Just $ Map.fromList [("right", toAst expr)]
 
