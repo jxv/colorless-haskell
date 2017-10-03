@@ -200,6 +200,9 @@ instance FromJSON Const where
 class HasType a where
   getType :: Proxy a -> Type
 
+instance HasType () where
+  getType _ = "Unit"
+
 instance HasType Bool where
   getType _ = "Bool"
 
