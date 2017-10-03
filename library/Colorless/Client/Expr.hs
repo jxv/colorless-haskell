@@ -4,6 +4,7 @@ module Colorless.Client.Expr
   , Path
   , Fn
   , ToArgs
+  , exprJSON
   , stmt
   --
   , appendMember
@@ -152,6 +153,7 @@ module Colorless.Client.Expr
 
 import qualified Data.Text as T
 import qualified Data.Map as Map
+import Data.Aeson (toJSON, Value)
 import Data.Proxy
 import Data.Word
 import Data.Int
@@ -161,6 +163,9 @@ import qualified Colorless.Ast as Ast
 
 import Colorless.Ast (Ast(..), ToAst(..))
 import Colorless.Types
+
+exprJSON :: (HasType a, ToAst a) => Expr a -> Value
+exprJSON = toJSON . toAst
 
 -- Don't export constructors
 data Expr a
