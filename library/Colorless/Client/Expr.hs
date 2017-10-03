@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ExistentialQuantification #-}
 module Colorless.Client.Expr
   ( Expr
   , Stmt
@@ -137,7 +135,7 @@ data Expr a
   = Expr Ast
   | Expr'Ctor Ctor (Map MemberName Ast)
 
-data Ctor = Ctor (Ast -> Map MemberName Ast -> Either (Map MemberName Ast, Ctor) Ast)
+newtype Ctor = Ctor (Ast -> Map MemberName Ast -> Either (Map MemberName Ast, Ctor) Ast)
 
 structCtor :: [MemberName] -> Ctor
 structCtor [] = error "need members"
@@ -159,7 +157,7 @@ appendMember :: Expr (a -> b) -> Expr a -> Expr b
 appendMember (Expr'Ctor (Ctor c) m) (Expr a) = case c a m of
   Left (m', ctor) -> Expr'Ctor ctor m'
   Right ast -> Expr ast
-appendMember _ _ = error "not handlable"
+appendMember _ _ = error "cannot not append member"
 
 (<:>) :: Expr (a -> b) -> Expr a -> Expr b
 (<:>) = appendMember

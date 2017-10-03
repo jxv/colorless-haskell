@@ -1,14 +1,8 @@
 module ClientSpec (spec) where
 
-import qualified Data.Vector as V
-import qualified Data.Map as Map
 import Test.Hspec
-import Data.Aeson
-import Data.Aeson.Types
 import Data.Int
 
-import Colorless.Types
-import Colorless.Ast
 import Colorless.Client
 
 helloWorld :: Expr (Int32, Int32)
