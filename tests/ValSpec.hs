@@ -7,7 +7,7 @@ import Data.Aeson.Types
 import Data.Text (Text)
 
 import Colorless.Types
-import Colorless.Server.Val
+import Colorless.Val
 
 spec :: Spec
 spec = do
