@@ -185,7 +185,7 @@ data WrapUnCall m = WrapUnCall
 
 data StructUnCall m = StructUnCall
   { n :: TypeName
-  , m :: Map MemberName (Expr m)
+  , m :: Expr m
   } deriving (Show, Eq)
 
 data EnumerationUnCall m = EnumerationUnCall
@@ -222,7 +222,7 @@ fromAst = \case
   Ast'FnCall Ast.FnCall{fn,args} -> Expr'FnCall $ FnCall (fromAst fn) (map fromAst args)
   Ast'WrapCall Ast.WrapCall{n,w} -> Expr'ApiUnCall $ ApiUnCall'WrapUnCall $ WrapUnCall n (fromAst w)
   Ast'HollowCall Ast.HollowCall{n} -> Expr'ApiUnCall $ ApiUnCall'HollowUnCall $ HollowUnCall n
-  Ast'StructCall Ast.StructCall{n,m} -> Expr'ApiUnCall $ ApiUnCall'StructUnCall $ StructUnCall n (fromAst <$> m)
+  Ast'StructCall Ast.StructCall{n,m} -> Expr'ApiUnCall $ ApiUnCall'StructUnCall $ StructUnCall n (fromAst m)
   Ast'EnumerationCall Ast.EnumerationCall{n,e} -> Expr'ApiUnCall $ ApiUnCall'EnumerationUnCall $ EnumerationUnCall n (fromAst e)
   Ast'Enumeral Ast.Enumeral{tag,m} -> Expr'UnVal $ UnVal'UnEnumeral $ UnEnumeral tag (fmap fromAst <$> m)
   Ast'Struct Ast.Struct{m} -> Expr'UnVal $ UnVal'UnStruct $ UnStruct (fromAst <$> m)
@@ -418,15 +418,11 @@ evalWrapUnCall WrapUnCall{n,w} envRef = do
 
 evalStructUnCall :: (MonadIO m, RuntimeThrower m) => StructUnCall m -> IORef (Env m) -> Eval m Val
 evalStructUnCall StructUnCall{n,m} envRef = do
-  m' <- mapM eval' m
-  Eval . ReaderT $ \cfg ->
-    apiCall cfg $ ApiCall'Struct n (Struct m')
-  where
-    eval' expr = do
-      expr' <- eval expr envRef
-      case expr' of
-        Expr'Val v -> return v
-        _ -> runtimeThrow RuntimeError'IncompatibleType
+  expr <- eval m envRef
+  case expr of
+    Expr'Val (Val'ApiVal (ApiVal'Struct m')) -> Eval . ReaderT $ \cfg ->
+      apiCall cfg $ ApiCall'Struct n m'
+    _ -> runtimeThrow RuntimeError'IncompatibleType
 
 evalEnumerationUnCall :: (MonadIO m, RuntimeThrower m) => EnumerationUnCall m -> IORef (Env m) -> Eval m Val
 evalEnumerationUnCall EnumerationUnCall{n,e} envRef = do

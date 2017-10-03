@@ -116,7 +116,6 @@ instance FromJSON Ast where
     <|> (Ast'HollowCall <$> parseJSON v)
     <|> (Ast'Enumeral <$> parseJSON v)
     <|> (Ast'Struct <$> parseJSON v)
-    <|> (Ast'Wrap <$> parseJSON v)
     <|> (Ast'Const <$> parseJSON v)
 
 instance ToJSON Ast where
@@ -286,7 +285,7 @@ instance ToJSON WrapCall
 
 data StructCall = StructCall
   { n :: TypeName
-  , m :: Map MemberName Ast
+  , m :: Ast
   } deriving (Show, Eq, Generic)
 
 instance FromJSON StructCall
@@ -332,7 +331,8 @@ data Wrap = Wrap
   { w :: Ast
   } deriving (Show, Eq, Generic)
 
-instance FromJSON Wrap
+-- Wrap does not have a FromJSON instance
+-- 'Wrapped' values will be coerced as needed
 
 instance ToJSON Wrap where
   toJSON (Wrap w) = toJSON w
