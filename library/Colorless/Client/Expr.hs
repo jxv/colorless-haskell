@@ -2,6 +2,7 @@ module Colorless.Client.Expr
   ( Expr
   , Stmt
   , Path
+  , Fn
   , ToArgs
   , stmt
   --
@@ -206,13 +207,13 @@ def symbol expr = Stmt
   , ret = unsafeRef symbol
   }
 
-defn :: HasType b => Symbol -> Expr (a -> b) -> Stmt (Expr (a -> b))
+defn :: Symbol -> Expr (Fn a) -> Stmt (Expr (Fn a))
 defn symbol expr = Stmt
   { stmts = [Ast'Define $ Ast.Define symbol (toAst expr)]
   , ret = unsafeRef symbol
   }
 
-defnRec :: HasType b => Symbol -> (Expr (a -> b) -> Expr (a -> b)) -> Stmt (Expr (a -> b))
+defnRec :: Symbol -> (Expr (Fn a) -> Expr (Fn a)) -> Stmt (Expr (Fn a))
 defnRec symbol f = Stmt
   { stmts = [Ast'Define $ Ast.Define symbol ast]
   , ret = fn
@@ -690,26 +691,28 @@ var toArgs = n => {
 };
 -}
 
-call :: ToArgs b => Expr (b -> Expr a) -> b -> Expr a
+data Fn a
+
+call :: ToArgs args => Expr (Fn (args -> a)) -> args -> Expr a
 call (Expr f) args = Expr $ Ast'FnCall $ Ast.FnCall f (toArgs args)
 call (Expr'Ctor _ _) _ = error "Unevalated expression contructor cannot be called"
 
-(-<) :: ToArgs b => Expr (b -> Expr a) -> b -> Expr a
+(-<) :: ToArgs args => Expr (Fn (args -> a)) -> args -> Expr a
 f -< x = call f x
 
 fn0
   :: (HasType a, ToAst a)
   => Expr a
-  -> Expr (() -> Expr a)
+  -> Expr (Fn (() -> a))
 fn0 f = Expr $ Ast'Lambda $ Ast.Lambda
   []
   (toAst f)
 
 fn1
-  :: (HasType a, ToAst a, HasType t1, ToAst t1)
+  :: (HasType a, HasType t1)
   => Symbol
   -> (Expr t1 -> Expr a)
-  -> Expr ((Expr t1) -> Expr a)
+  -> Expr (Fn ((Expr t1) -> a))
 fn1 s1 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f))]
   (toAst $ f (unsafeRef s1))
@@ -718,10 +721,10 @@ fn1 s1 f = Expr $ Ast'Lambda $ Ast.Lambda
     p1 _ = Proxy
 
 fn2
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2)
+  :: (HasType a, HasType t1, HasType t2)
   => Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr a)
-  -> Expr ((Expr t1, Expr t2) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2) -> a))
 fn2 s1 s2 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2))
@@ -732,10 +735,10 @@ fn2 s1 s2 f = Expr $ Ast'Lambda $ Ast.Lambda
     p2 _ = Proxy
 
 fn3
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3)
+  :: (HasType a, HasType t1, HasType t2, HasType t3)
   => Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3) -> a))
 fn3 s1 s2 s3 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3))
@@ -748,10 +751,10 @@ fn3 s1 s2 s3 f = Expr $ Ast'Lambda $ Ast.Lambda
     p3 _ = Proxy
 
 fn4
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4)
   => Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4) -> a))
 fn4 s1 s2 s3 s4 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4))
@@ -766,10 +769,10 @@ fn4 s1 s2 s3 s4 f = Expr $ Ast'Lambda $ Ast.Lambda
     p4 _ = Proxy
 
 fn5
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5) -> a))
 fn5 s1 s2 s3 s4 s5 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5))
@@ -786,10 +789,10 @@ fn5 s1 s2 s3 s4 s5 f = Expr $ Ast'Lambda $ Ast.Lambda
     p5 _ = Proxy
 
 fn6
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6) -> a))
 fn6 s1 s2 s3 s4 s5 s6 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6))
@@ -808,10 +811,10 @@ fn6 s1 s2 s3 s4 s5 s6 f = Expr $ Ast'Lambda $ Ast.Lambda
     p6 _ = Proxy
 
 fn7
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7) -> a))
 fn7 s1 s2 s3 s4 s5 s6 s7 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7))
@@ -832,10 +835,10 @@ fn7 s1 s2 s3 s4 s5 s6 s7 f = Expr $ Ast'Lambda $ Ast.Lambda
     p7 _ = Proxy
 
 fn8
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8) -> a))
 fn8 s1 s2 s3 s4 s5 s6 s7 s8 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8))
@@ -858,10 +861,10 @@ fn8 s1 s2 s3 s4 s5 s6 s7 s8 f = Expr $ Ast'Lambda $ Ast.Lambda
     p8 _ = Proxy
 
 fn9
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9) -> a))
 fn9 s1 s2 s3 s4 s5 s6 s7 s8 s9 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9))
@@ -886,10 +889,10 @@ fn9 s1 s2 s3 s4 s5 s6 s7 s8 s9 f = Expr $ Ast'Lambda $ Ast.Lambda
     p9 _ = Proxy
 
 fn10
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10) -> a))
 fn10 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10))
@@ -916,10 +919,10 @@ fn10 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 f = Expr $ Ast'Lambda $ Ast.Lambda
     p10 _ = Proxy
 
 fn11
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11) -> a))
 fn11 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11))
@@ -948,10 +951,10 @@ fn11 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 f = Expr $ Ast'Lambda $ Ast.Lambda
     p11 _ = Proxy
 
 fn12
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12) -> a))
 fn12 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12))
@@ -982,10 +985,10 @@ fn12 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 f = Expr $ Ast'Lambda $ Ast.Lambda
     p12 _ = Proxy
 
 fn13
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13) -> a))
 fn13 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13))
@@ -1018,10 +1021,10 @@ fn13 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 f = Expr $ Ast'Lambda $ Ast.Lamb
     p13 _ = Proxy
 
 fn14
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14) -> a))
 fn14 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14))
@@ -1056,10 +1059,10 @@ fn14 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 f = Expr $ Ast'Lambda $ Ast.
     p14 _ = Proxy
 
 fn15
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15) -> a))
 fn15 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15))
@@ -1096,10 +1099,10 @@ fn15 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 f = Expr $ Ast'Lambda $ 
     p15 _ = Proxy
 
 fn16
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16) -> a))
 fn16 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16))
@@ -1138,10 +1141,10 @@ fn16 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 f = Expr $ Ast'Lambd
     p16 _ = Proxy
 
 fn17
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17) -> a))
 fn17 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17))
@@ -1182,10 +1185,10 @@ fn17 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 f = Expr $ Ast'L
     p17 _ = Proxy
 
 fn18
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18) -> a))
 fn18 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18))
@@ -1228,10 +1231,10 @@ fn18 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 f = Expr $ A
     p18 _ = Proxy
 
 fn19
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19) -> a))
 fn19 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19))
@@ -1276,10 +1279,10 @@ fn19 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 f = Expr
     p19 _ = Proxy
 
 fn20
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20) -> a))
 fn20 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20))
@@ -1326,10 +1329,10 @@ fn20 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 f = 
     p20 _ = Proxy
 
 fn21
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21) -> a))
 fn21 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21))
@@ -1378,10 +1381,10 @@ fn21 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 
     p21 _ = Proxy
 
 fn22
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21, ToAst t22, HasType t22)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22) -> a))
 fn22 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22))
@@ -1432,10 +1435,10 @@ fn22 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 
     p22 _ = Proxy
 
 fn23
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21, ToAst t22, HasType t22, ToAst t23, HasType t23)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23) -> a))
 fn23 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23))
@@ -1488,10 +1491,10 @@ fn23 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 
     p23 _ = Proxy
 
 fn24
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21, ToAst t22, HasType t22, ToAst t23, HasType t23, ToAst t24, HasType t24)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24) -> a))
 fn24 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24))
@@ -1546,10 +1549,10 @@ fn24 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 
     p24 _ = Proxy
 
 fn25
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21, ToAst t22, HasType t22, ToAst t23, HasType t23, ToAst t24, HasType t24, ToAst t25, HasType t25)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25) -> a))
 fn25 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25))
@@ -1606,10 +1609,10 @@ fn25 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 
     p25 _ = Proxy
 
 fn26
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21, ToAst t22, HasType t22, ToAst t23, HasType t23, ToAst t24, HasType t24, ToAst t25, HasType t25, ToAst t26, HasType t26)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26) -> a))
 fn26 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26))
@@ -1668,10 +1671,10 @@ fn26 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 
     p26 _ = Proxy
 
 fn27
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21, ToAst t22, HasType t22, ToAst t23, HasType t23, ToAst t24, HasType t24, ToAst t25, HasType t25, ToAst t26, HasType t26, ToAst t27, HasType t27)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27) -> a))
 fn27 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27))
@@ -1732,10 +1735,10 @@ fn27 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 
     p27 _ = Proxy
 
 fn28
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21, ToAst t22, HasType t22, ToAst t23, HasType t23, ToAst t24, HasType t24, ToAst t25, HasType t25, ToAst t26, HasType t26, ToAst t27, HasType t27, ToAst t28, HasType t28)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28) -> a))
 fn28 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f)), (s28, getType (p28 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28))
@@ -1798,10 +1801,10 @@ fn28 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 
     p28 _ = Proxy
 
 fn29
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21, ToAst t22, HasType t22, ToAst t23, HasType t23, ToAst t24, HasType t24, ToAst t25, HasType t25, ToAst t26, HasType t26, ToAst t27, HasType t27, ToAst t28, HasType t28, ToAst t29, HasType t29)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29) -> a))
 fn29 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f)), (s28, getType (p28 f)), (s29, getType (p29 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29))
@@ -1866,10 +1869,10 @@ fn29 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 
     p29 _ = Proxy
 
 fn30
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21, ToAst t22, HasType t22, ToAst t23, HasType t23, ToAst t24, HasType t24, ToAst t25, HasType t25, ToAst t26, HasType t26, ToAst t27, HasType t27, ToAst t28, HasType t28, ToAst t29, HasType t29, ToAst t30, HasType t30)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29, Expr t30) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29, Expr t30) -> a))
 fn30 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29 s30 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f)), (s28, getType (p28 f)), (s29, getType (p29 f)), (s30, getType (p30 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29) (unsafeRef s30))
@@ -1936,10 +1939,10 @@ fn30 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 
     p30 _ = Proxy
 
 fn31
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21, ToAst t22, HasType t22, ToAst t23, HasType t23, ToAst t24, HasType t24, ToAst t25, HasType t25, ToAst t26, HasType t26, ToAst t27, HasType t27, ToAst t28, HasType t28, ToAst t29, HasType t29, ToAst t30, HasType t30, ToAst t31, HasType t31)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30, HasType t31)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29, Expr t30, Expr t31) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29, Expr t30, Expr t31) -> a))
 fn31 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29 s30 s31 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f)), (s28, getType (p28 f)), (s29, getType (p29 f)), (s30, getType (p30 f)), (s31, getType (p31 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29) (unsafeRef s30) (unsafeRef s31))
@@ -2008,10 +2011,10 @@ fn31 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 
     p31 _ = Proxy
 
 fn32
-  :: (HasType a, ToAst a, HasType t1, ToAst t1, ToAst t2, HasType t2, ToAst t3, HasType t3, ToAst t4, HasType t4, ToAst t5, HasType t5, ToAst t6, HasType t6, ToAst t7, HasType t7, ToAst t8, HasType t8, ToAst t9, HasType t9, ToAst t10, HasType t10, ToAst t11, HasType t11, ToAst t12, HasType t12, ToAst t13, HasType t13, ToAst t14, HasType t14, ToAst t15, HasType t15, ToAst t16, HasType t16, ToAst t17, HasType t17, ToAst t18, HasType t18, ToAst t19, HasType t19, ToAst t20, HasType t20, ToAst t21, HasType t21, ToAst t22, HasType t22, ToAst t23, HasType t23, ToAst t24, HasType t24, ToAst t25, HasType t25, ToAst t26, HasType t26, ToAst t27, HasType t27, ToAst t28, HasType t28, ToAst t29, HasType t29, ToAst t30, HasType t30, ToAst t31, HasType t31, ToAst t32, HasType t32)
+  :: (HasType a, HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30, HasType t31, HasType t32)
   => Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol -> Symbol
   -> (Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31 -> Expr t32 -> Expr a)
-  -> Expr ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29, Expr t30, Expr t31, Expr t32) -> Expr a)
+  -> Expr (Fn ((Expr t1, Expr t2, Expr t3, Expr t4, Expr t5, Expr t6, Expr t7, Expr t8, Expr t9, Expr t10, Expr t11, Expr t12, Expr t13, Expr t14, Expr t15, Expr t16, Expr t17, Expr t18, Expr t19, Expr t20, Expr t21, Expr t22, Expr t23, Expr t24, Expr t25, Expr t26, Expr t27, Expr t28, Expr t29, Expr t30, Expr t31, Expr t32) -> a))
 fn32 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29 s30 s31 s32 f = Expr $ Ast'Lambda $ Ast.Lambda
   [(s1, getType (p1 f)), (s2, getType (p2 f)), (s3, getType (p3 f)), (s4, getType (p4 f)), (s5, getType (p5 f)), (s6, getType (p6 f)), (s7, getType (p7 f)), (s8, getType (p8 f)), (s9, getType (p9 f)), (s10, getType (p10 f)), (s11, getType (p11 f)), (s12, getType (p12 f)), (s13, getType (p13 f)), (s14, getType (p14 f)), (s15, getType (p15 f)), (s16, getType (p16 f)), (s17, getType (p17 f)), (s18, getType (p18 f)), (s19, getType (p19 f)), (s20, getType (p20 f)), (s21, getType (p21 f)), (s22, getType (p22 f)), (s23, getType (p23 f)), (s24, getType (p24 f)), (s25, getType (p25 f)), (s26, getType (p26 f)), (s27, getType (p27 f)), (s28, getType (p28 f)), (s29, getType (p29 f)), (s30, getType (p30 f)), (s31, getType (p31 f)), (s32, getType (p32 f))]
   (toAst $ f (unsafeRef s1) (unsafeRef s2) (unsafeRef s3) (unsafeRef s4) (unsafeRef s5) (unsafeRef s6) (unsafeRef s7) (unsafeRef s8) (unsafeRef s9) (unsafeRef s10) (unsafeRef s11) (unsafeRef s12) (unsafeRef s13) (unsafeRef s14) (unsafeRef s15) (unsafeRef s16) (unsafeRef s17) (unsafeRef s18) (unsafeRef s19) (unsafeRef s20) (unsafeRef s21) (unsafeRef s22) (unsafeRef s23) (unsafeRef s24) (unsafeRef s25) (unsafeRef s26) (unsafeRef s27) (unsafeRef s28) (unsafeRef s29) (unsafeRef s30) (unsafeRef s31) (unsafeRef s32))
@@ -2089,9 +2092,9 @@ var fn = n => {
   }
   var l = ['fn', n, '\n'];
 
-  l = l.concat(['  :: (HasType a, ToAst a, HasType t1, ToAst t1']);
+  l = l.concat(['  :: (HasType a, HasType t1']);
   for (var i = 1; i < n; i++) {
-    l = l.concat([', ToAst t', i + 1,', HasType t', i + 1]);
+    l = l.concat([', HasType t', i + 1]);
   }
   l = l.concat([')\n']);
 
@@ -2107,11 +2110,11 @@ var fn = n => {
   }
   l = l.concat([' -> Expr a)\n']);
 
-  l = l.concat(['  -> Expr ((Expr t1'])
+  l = l.concat(['  -> Expr (Fn ((Expr t1'])
   for (var i = 1; i < n; i++) {
     l = l.concat([', Expr t', i + 1]);
   }
-  l = l.concat([') -> Expr a)\n']);
+  l = l.concat([') -> a))\n']);
 
   l = l.concat(['fn', n]);
   for (var i = 0; i < n; i++) {
