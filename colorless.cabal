@@ -43,11 +43,11 @@ library
       Colorless.Client
       Colorless.Client.Expr
       Colorless.Endpoint
+      Colorless.Prim
       Colorless.Server
       Colorless.Server.Expr
-      Colorless.Server.Types
-      Colorless.Server.Val
       Colorless.Types
+      Colorless.Val
   default-language: Haskell2010
 
 test-suite colorless-suite

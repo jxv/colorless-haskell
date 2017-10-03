@@ -55,9 +55,9 @@ import Data.Text (Text)
 
 import qualified Colorless.Ast as Ast
 import Colorless.Types
-import Colorless.Server.Types
-import Colorless.Server.Val
 import Colorless.Ast (Ast(..))
+import Colorless.Val
+import Colorless.Prim
 
 data EvalConfig m = EvalConfig
   { options :: Options

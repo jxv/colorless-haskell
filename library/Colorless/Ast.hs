@@ -325,7 +325,8 @@ data Struct = Struct
 instance FromJSON Struct where
   parseJSON v = Struct <$> parseJSON v
 
-instance ToJSON Struct
+instance ToJSON Struct where
+  toJSON (Struct m) = toJSON m
 
 data Wrap = Wrap
   { w :: Ast
