@@ -73,6 +73,37 @@ module Colorless.Client.Expr
   , tuple30
   , tuple31
   , tuple32
+  , tuple2'
+  , tuple3'
+  , tuple4'
+  , tuple5'
+  , tuple6'
+  , tuple7'
+  , tuple8'
+  , tuple9'
+  , tuple10'
+  , tuple11'
+  , tuple12'
+  , tuple13'
+  , tuple14'
+  , tuple15'
+  , tuple16'
+  , tuple17'
+  , tuple18'
+  , tuple19'
+  , tuple20'
+  , tuple21'
+  , tuple22'
+  , tuple23'
+  , tuple24'
+  , tuple25'
+  , tuple26'
+  , tuple27'
+  , tuple28'
+  , tuple29'
+  , tuple30'
+  , tuple31'
+  , tuple32'
   --
   , call
   , (-<)
@@ -327,190 +358,377 @@ eitheR = \case
 --
 
 tuple2
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2)
+  :: (HasType t1, HasType t2)
   => Expr t1 -> Expr t2
   -> Expr (t1, t2)
 tuple2 t1 t2 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2]
 
+tuple2'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2)
+  => (t1, t2)
+  -> Expr (t1, t2)
+tuple2' (t1, t2) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2]
+
 tuple3
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3)
+  :: (HasType t1, HasType t2, HasType t3)
   => Expr t1 -> Expr t2 -> Expr t3
   -> Expr (t1, t2, t3)
 tuple3 t1 t2 t3 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3]
 
+tuple3'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3)
+  => (t1, t2, t3)
+  -> Expr (t1, t2, t3)
+tuple3' (t1, t2, t3) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3]
+
 tuple4
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4
   -> Expr (t1, t2, t3, t4)
 tuple4 t1 t2 t3 t4 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4]
 
+tuple4'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4)
+  => (t1, t2, t3, t4)
+  -> Expr (t1, t2, t3, t4)
+tuple4' (t1, t2, t3, t4) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4]
+
 tuple5
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5
   -> Expr (t1, t2, t3, t4, t5)
 tuple5 t1 t2 t3 t4 t5 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5]
 
+tuple5'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5)
+  => (t1, t2, t3, t4, t5)
+  -> Expr (t1, t2, t3, t4, t5)
+tuple5' (t1, t2, t3, t4, t5) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5]
+
 tuple6
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6
   -> Expr (t1, t2, t3, t4, t5, t6)
 tuple6 t1 t2 t3 t4 t5 t6 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6]
 
+tuple6'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6)
+  => (t1, t2, t3, t4, t5, t6)
+  -> Expr (t1, t2, t3, t4, t5, t6)
+tuple6' (t1, t2, t3, t4, t5, t6) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6]
+
 tuple7
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7
   -> Expr (t1, t2, t3, t4, t5, t6, t7)
 tuple7 t1 t2 t3 t4 t5 t6 t7 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7]
 
+tuple7'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7)
+  => (t1, t2, t3, t4, t5, t6, t7)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7)
+tuple7' (t1, t2, t3, t4, t5, t6, t7) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7]
+
 tuple8
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8)
 tuple8 t1 t2 t3 t4 t5 t6 t7 t8 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8]
 
+tuple8'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8)
+  => (t1, t2, t3, t4, t5, t6, t7, t8)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8)
+tuple8' (t1, t2, t3, t4, t5, t6, t7, t8) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8]
+
 tuple9
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9)
 tuple9 t1 t2 t3 t4 t5 t6 t7 t8 t9 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9]
 
+tuple9'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9)
+tuple9' (t1, t2, t3, t4, t5, t6, t7, t8, t9) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9]
+
 tuple10
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10)
 tuple10 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10]
 
+tuple10'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10)
+tuple10' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10]
+
 tuple11
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11)
 tuple11 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11]
 
+tuple11'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11)
+tuple11' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11]
+
 tuple12
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12)
 tuple12 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12]
 
+tuple12'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12)
+tuple12' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12]
+
 tuple13
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13)
 tuple13 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13]
 
+tuple13'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13)
+tuple13' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13]
+
 tuple14
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14)
 tuple14 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14]
 
+tuple14'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14)
+tuple14' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14]
+
 tuple15
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15)
 tuple15 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15]
 
+tuple15'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15)
+tuple15' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15]
+
 tuple16
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16)
 tuple16 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16]
 
+tuple16'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16)
+tuple16' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16]
+
 tuple17
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17)
 tuple17 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17]
 
+tuple17'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17)
+tuple17' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17]
+
 tuple18
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18)
 tuple18 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18]
 
+tuple18'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18)
+tuple18' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18]
+
 tuple19
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19)
 tuple19 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19]
 
+tuple19'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19)
+tuple19' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19]
+
 tuple20
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20)
 tuple20 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20]
 
+tuple20'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20)
+tuple20' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20]
+
 tuple21
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21)
 tuple21 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21]
 
+tuple21'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21)
+tuple21' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21]
+
 tuple22
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22)
 tuple22 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22]
 
+tuple22'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22)
+tuple22' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22]
+
 tuple23
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23)
 tuple23 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23]
 
+tuple23'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23)
+tuple23' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23]
+
 tuple24
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24)
 tuple24 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24]
 
+tuple24'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24)
+tuple24' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24]
+
 tuple25
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25)
 tuple25 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25]
 
+tuple25'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25)
+tuple25' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25]
+
 tuple26
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26)
 tuple26 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26]
 
+tuple26'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26)
+tuple26' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26]
+
 tuple27
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27)
 tuple27 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27]
 
+tuple27'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27)
+tuple27' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27]
+
 tuple28
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27, HasType t28, ToAst t28)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28)
 tuple28 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28]
 
+tuple28'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27, HasType t28, ToAst t28)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28)
+tuple28' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28]
+
 tuple29
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27, HasType t28, ToAst t28, HasType t29, ToAst t29)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29)
 tuple29 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29]
 
+tuple29'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27, HasType t28, ToAst t28, HasType t29, ToAst t29)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29)
+tuple29' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29]
+
 tuple30
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27, HasType t28, ToAst t28, HasType t29, ToAst t29, HasType t30, ToAst t30)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30)
 tuple30 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30]
 
+tuple30'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27, HasType t28, ToAst t28, HasType t29, ToAst t29, HasType t30, ToAst t30)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30)
+tuple30' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30]
+
 tuple31
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27, HasType t28, ToAst t28, HasType t29, ToAst t29, HasType t30, ToAst t30, HasType t31, ToAst t31)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30, HasType t31)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31)
 tuple31 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30, toAst t31]
 
+tuple31'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27, HasType t28, ToAst t28, HasType t29, ToAst t29, HasType t30, ToAst t30, HasType t31, ToAst t31)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31)
+tuple31' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30, toAst t31]
+
 tuple32
-  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27, HasType t28, ToAst t28, HasType t29, ToAst t29, HasType t30, ToAst t30, HasType t31, ToAst t31, HasType t32, ToAst t32)
+  :: (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30, HasType t31, HasType t32)
   => Expr t1 -> Expr t2 -> Expr t3 -> Expr t4 -> Expr t5 -> Expr t6 -> Expr t7 -> Expr t8 -> Expr t9 -> Expr t10 -> Expr t11 -> Expr t12 -> Expr t13 -> Expr t14 -> Expr t15 -> Expr t16 -> Expr t17 -> Expr t18 -> Expr t19 -> Expr t20 -> Expr t21 -> Expr t22 -> Expr t23 -> Expr t24 -> Expr t25 -> Expr t26 -> Expr t27 -> Expr t28 -> Expr t29 -> Expr t30 -> Expr t31 -> Expr t32
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32)
 tuple32 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30, toAst t31, toAst t32]
+
+tuple32'
+  :: (HasType t1, ToAst t1, HasType t2, ToAst t2, HasType t3, ToAst t3, HasType t4, ToAst t4, HasType t5, ToAst t5, HasType t6, ToAst t6, HasType t7, ToAst t7, HasType t8, ToAst t8, HasType t9, ToAst t9, HasType t10, ToAst t10, HasType t11, ToAst t11, HasType t12, ToAst t12, HasType t13, ToAst t13, HasType t14, ToAst t14, HasType t15, ToAst t15, HasType t16, ToAst t16, HasType t17, ToAst t17, HasType t18, ToAst t18, HasType t19, ToAst t19, HasType t20, ToAst t20, HasType t21, ToAst t21, HasType t22, ToAst t22, HasType t23, ToAst t23, HasType t24, ToAst t24, HasType t25, ToAst t25, HasType t26, ToAst t26, HasType t27, ToAst t27, HasType t28, ToAst t28, HasType t29, ToAst t29, HasType t30, ToAst t30, HasType t31, ToAst t31, HasType t32, ToAst t32)
+  => (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32)
+  -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32)
+tuple32' (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32) = Expr $ Ast'Tuple $ Ast.Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30, toAst t31, toAst t32]
+
 
 {-
 
@@ -522,10 +740,10 @@ var tuple = n => {
 
   var l = [
     'tuple', n, '\n',
-    '  :: (HasType t1, ToAst t1',
+    '  :: (HasType t1',
   ];
   for (var i = 1; i < n; i++) {
-    l = l.concat([', HasType t', i + 1, ', ToAst t', i + 1]);
+    l = l.concat([', HasType t', i + 1]);
   }
   l = l.concat([')\n']);
 
@@ -546,6 +764,45 @@ var tuple = n => {
     l = l.concat([' t', i + 1]);
   }
   l = l.concat([' = Expr $ Ast\'Tuple $ Ast.Tuple [toAst t1']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', toAst t', i + 1]);
+  }
+  l = l.concat([']\n\n']);
+
+  return l.join('');
+};
+
+var tuplePure = n => {
+  if (n < 2) {
+    return '';
+  }
+
+  var l = [
+    'tuple', n, '\'\n',
+    '  :: (HasType t1, ToAst t1',
+  ];
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', HasType t', i + 1, ', ToAst t', i + 1]);
+  }
+  l = l.concat([')\n']);
+
+  l = l.concat(['  => (t1']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', t', i + 1]);
+  }
+  l = l.concat([')\n']);
+
+  l = l.concat(['  -> Expr (t1']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', t', i + 1]);
+  }
+  l = l.concat([')\n']);
+
+  l = l.concat(['tuple', n, '\' (t1']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', t', i + 1]);
+  }
+  l = l.concat([') = Expr $ Ast\'Tuple $ Ast.Tuple [toAst t1']);
   for (var i = 1; i < n; i++) {
     l = l.concat([', toAst t', i + 1]);
   }
