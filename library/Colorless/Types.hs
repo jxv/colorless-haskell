@@ -157,6 +157,7 @@ instance FromJSON Type where
       n <- o .: "n"
       case HML.lookup "p" o of
         Nothing -> pure $ Type n []
+        Just (String p) -> pure $ Type n [Type (TypeName p) []]
         Just p -> Type n <$> (parseJSON p)
     _ -> mzero
 
@@ -253,4 +254,12 @@ instance (HasType e, HasType a) => HasType (Either e a) where
       p1 :: Proxy (Either e a) -> Proxy e
       p1 _ = Proxy
       p2 :: Proxy (Either e a) -> Proxy a
+      p2 _ = Proxy
+
+instance (HasType a, HasType b) => HasType (a,b) where
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x)]
+    where
+      p1 :: Proxy (a,b) -> Proxy a
+      p1 _ = Proxy
+      p2 :: Proxy (a,b) -> Proxy b
       p2 _ = Proxy

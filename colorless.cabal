@@ -69,6 +69,7 @@ test-suite colorless-suite
     , vector
   other-modules:
       AstSpec
+      ClientSpec
       ExprSpec
       ValSpec
   default-language: Haskell2010

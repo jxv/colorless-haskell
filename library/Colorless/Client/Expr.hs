@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ExistentialQuantification #-}
 module Colorless.Client.Expr
   ( Expr
   , Stmt
@@ -6,9 +7,13 @@ module Colorless.Client.Expr
   , ToArgs
   , stmt
   --
+  , appendMember
+  , (<:>)
+  --
   , begin
   , def
-  , defRec
+  , defn
+  , defnRec
   , iF
   , get
   , dot
@@ -109,6 +114,8 @@ module Colorless.Client.Expr
   --
   , unsafeExpr
   , unsafeRef
+  , unsafeStructExpr
+  , unsafeEnumeralExpr
   , unsafeStmt
   , unsafePath
   ) where
@@ -118,6 +125,7 @@ import qualified Data.Map as Map
 import Data.Proxy
 import Data.Word
 import Data.Int
+import Data.Map (Map)
 
 import qualified Colorless.Ast as Ast
 
@@ -127,8 +135,34 @@ import Colorless.Types
 -- Don't export constructors
 data Expr a
   = Expr Ast
-  | Expr'Ctor a
-  deriving (Show, Eq)
+  | Expr'Ctor Ctor (Map MemberName Ast)
+
+data Ctor = Ctor (Ast -> Map MemberName Ast -> Either (Map MemberName Ast, Ctor) Ast)
+
+structCtor :: [MemberName] -> Ctor
+structCtor [] = error "need members"
+structCtor (n:[]) = Ctor $ \ast m -> Right (Ast.Ast'Struct $ Ast.Struct $ Map.insert n ast m)
+structCtor (n:ns) = Ctor $ \ast m -> Left (Map.insert n ast m, structCtor ns)
+
+unsafeStructExpr :: [MemberName] -> Expr a
+unsafeStructExpr ns = Expr'Ctor (structCtor ns) Map.empty
+
+enumeralCtor :: EnumeralName -> [MemberName] -> Ctor
+enumeralCtor _ [] = error "need members"
+enumeralCtor tag (n:[]) = Ctor $ \ast m -> Right (Ast.Ast'Enumeral $ Ast.Enumeral tag $ Just $ Map.insert n ast m)
+enumeralCtor tag (n:ns) = Ctor $ \ast m -> Left (Map.insert n ast m, enumeralCtor tag ns)
+
+unsafeEnumeralExpr :: EnumeralName -> [MemberName] -> Expr a
+unsafeEnumeralExpr tag ns = Expr'Ctor (enumeralCtor tag ns) Map.empty
+
+appendMember :: Expr (a -> b) -> Expr a -> Expr b
+appendMember (Expr'Ctor (Ctor c) m) (Expr a) = case c a m of
+  Left (m', ctor) -> Expr'Ctor ctor m'
+  Right ast -> Expr ast
+appendMember _ _ = error "not handlable"
+
+(<:>) :: Expr (a -> b) -> Expr a -> Expr b
+(<:>) = appendMember
 
 instance HasType a => HasType (Expr a) where
   getType p = getType (cvt p)
@@ -142,9 +176,9 @@ unsafeExpr = Expr
 unsafeRef :: Symbol -> Expr a
 unsafeRef s = Expr (Ast'Ref $ Ast.Ref s)
 
-instance (HasType a, ToAst a) => ToAst (Expr a) where
+instance ToAst (Expr a) where
   toAst (Expr v) = v
-  toAst (Expr'Ctor a) = toAst a
+  toAst (Expr'Ctor _ _) = error "Unevaluated expression constructor cannot convert into an AST"
 
 -- Don't export constructor
 data Stmt a = Stmt
@@ -168,23 +202,29 @@ instance Monad Stmt where
     y = f (ret x)
     in Stmt (stmts x ++ stmts y) (ret y)
 
-def :: Symbol -> Expr a -> Stmt (Expr a)
-def symbol (Expr ast) = Stmt
-  { stmts = [Ast'Define $ Ast.Define symbol ast]
+def :: HasType a => Symbol -> Expr a -> Stmt (Expr a)
+def symbol expr = Stmt
+  { stmts = [Ast'Define $ Ast.Define symbol (toAst expr)]
   , ret = unsafeRef symbol
   }
 
-defRec :: Symbol -> (Expr a -> Expr a) -> Stmt (Expr a)
-defRec symbol f = Stmt
+defn :: HasType b => Symbol -> Expr (a -> b) -> Stmt (Expr (a -> b))
+defn symbol expr = Stmt
+  { stmts = [Ast'Define $ Ast.Define symbol (toAst expr)]
+  , ret = unsafeRef symbol
+  }
+
+defnRec :: HasType b => Symbol -> (Expr (a -> b) -> Expr (a -> b)) -> Stmt (Expr (a -> b))
+defnRec symbol f = Stmt
   { stmts = [Ast'Define $ Ast.Define symbol ast]
   , ret = fn
   }
   where
     fn = unsafeRef symbol
-    Expr ast = f fn
+    ast = toAst $ f fn
 
--- ToAst constraint is to prevent unevaluated functions
-stmt :: (HasType a, ToAst a) => Expr a -> Stmt (Expr a)
+-- HasType constraint is to prevent unevaluated functions
+stmt :: HasType a => Expr a -> Stmt (Expr a)
 stmt expr = Stmt [toAst expr] expr
 
 begin :: HasType a => Stmt (Expr a) -> Expr a
@@ -192,7 +232,7 @@ begin (Stmt s _) = Expr (Ast'Begin $ Ast.Begin s)
 
 --
 
-iF :: (HasType a, ToAst a) => Expr Bool -> Expr a -> Expr a -> Expr a
+iF :: HasType a => Expr Bool -> Expr a -> Expr a -> Expr a
 iF cond t f = Expr (Ast'If $ Ast.If (toAst cond) (toAst t) (toAst f))
 
 --
@@ -200,36 +240,36 @@ iF cond t f = Expr (Ast'If $ Ast.If (toAst cond) (toAst t) (toAst f))
 newtype Path f = Path [T.Text]
   deriving (Show, Eq)
 
-dot :: (HasType a, ToAst a, HasType b, ToAst b, HasType c, ToAst c) => Path (a -> b) -> Path (b -> c) -> Path (a -> c)
+dot :: (HasType a, HasType b, HasType c) => Path (a -> b) -> Path (b -> c) -> Path (a -> c)
 dot (Path p1) (Path p2) = Path (p1 ++ p2)
 
-(<.>) :: (HasType a, ToAst a, HasType b, ToAst b, HasType c, ToAst c) => Path (a -> b) -> Path (b -> c) -> Path (a -> c)
+(<.>) :: (HasType a, HasType b, HasType c) => Path (a -> b) -> Path (b -> c) -> Path (a -> c)
 (<.>) = dot
 
-unsafePath :: (HasType a, ToAst a, HasType b, ToAst b) => [T.Text] -> Path (a -> b)
+unsafePath :: (HasType a, HasType b) => [T.Text] -> Path (a -> b)
 unsafePath = Path
 
-get :: (HasType a, ToAst a, HasType b, ToAst b) => Path (a -> b) -> Expr a -> Expr b
+get :: (HasType a, HasType b) => Path (a -> b) -> Expr a -> Expr b
 get (Path path) expr = Expr $ Ast'Get $ Ast.Get path (toAst expr)
 
 --
 
-eq :: (HasType a, ToAst a) => Expr a -> Expr a -> Expr Bool
+eq :: (HasType a) => Expr a -> Expr a -> Expr Bool
 eq x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "==") [toAst x, toAst y])
 
-neq :: (HasType a, ToAst a) => Expr a -> Expr a -> Expr Bool
+neq :: (HasType a) => Expr a -> Expr a -> Expr Bool
 neq x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "!=") [toAst x, toAst y])
 
-add :: (Num a, HasType a, ToAst a) => Expr a -> Expr a -> Expr a
+add :: (Num a, HasType a) => Expr a -> Expr a -> Expr a
 add x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "+") [toAst x, toAst y])
 
-sub :: (Num a, HasType a, ToAst a) => Expr a -> Expr a -> Expr a
+sub :: (Num a, HasType a) => Expr a -> Expr a -> Expr a
 sub x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "-") [toAst x, toAst y])
 
-mul :: (Num a, HasType a, ToAst a) => Expr a -> Expr a -> Expr a
+mul :: (Num a, HasType a) => Expr a -> Expr a -> Expr a
 mul x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "*") [toAst x, toAst y])
 
-divide :: (Num a, HasType a, ToAst a) => Expr a -> Expr a -> Expr a
+divide :: (Num a, HasType a) => Expr a -> Expr a -> Expr a
 divide x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "/") [toAst x, toAst y])
 
 --
@@ -272,15 +312,15 @@ f64 = Expr . toAst
 
 --
 
-list :: (HasType a, ToAst a) => [Expr a] -> Expr [a]
+list :: (HasType a) => [Expr a] -> Expr [a]
 list = Expr . Ast'List . Ast.List . map toAst
 
-option :: (HasType a, ToAst a) => Maybe (Expr a) -> Expr (Maybe a)
+option :: (HasType a) => Maybe (Expr a) -> Expr (Maybe a)
 option = \case
   Nothing -> Expr (Ast'Const Const'Null)
   Just expr -> Expr (toAst expr)
 
-eitheR :: (HasType a, ToAst a, HasType b, ToAst b) => Either (Expr a) (Expr b) -> Expr (Either a b)
+eitheR :: (HasType a, HasType b) => Either (Expr a) (Expr b) -> Expr (Either a b)
 eitheR = \case
   Left expr -> Expr $ Ast'Enumeral $ Ast.Enumeral "Left" $ Just $ Map.fromList [("left", toAst expr)]
   Right expr -> Expr $ Ast'Enumeral $ Ast.Enumeral "Right" $ Just $ Map.fromList [("right", toAst expr)]
@@ -654,6 +694,7 @@ var toArgs = n => {
 
 call :: ToArgs b => Expr (b -> Expr a) -> b -> Expr a
 call (Expr f) args = Expr $ Ast'FnCall $ Ast.FnCall f (toArgs args)
+call (Expr'Ctor _ _) _ = error "Unevalated expression contructor cannot be called"
 
 (-<) :: ToArgs b => Expr (b -> Expr a) -> b -> Expr a
 f -< x = call f x
