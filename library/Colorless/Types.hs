@@ -3,6 +3,7 @@ module Colorless.Types
   ( Version(..)
   , Major(..)
   , Minor(..)
+  , Pull(..)
   , Request(..)
   , Response(..)
   , ResponseError(..)
@@ -42,6 +43,13 @@ newtype Minor = Minor Int
 
 instance FromJSON Minor
 instance ToJSON Minor
+
+data Pull = Pull
+  { protocol :: Text
+  , address :: Text
+  , path :: Text
+  , port :: Int
+  } deriving (Show, Eq)
 
 data Version = Version
   { major :: Major

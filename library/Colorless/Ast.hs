@@ -102,6 +102,17 @@ num n = case toJSON n of
   Number a -> Ast'Const (Const'Number a)
   _ -> error "should never reach here"
 
+instance ToAst a => ToAst [a] where
+  toAst xs = Ast'List $ List $ map toAst xs
+
+instance ToAst a => ToAst (Maybe a) where
+  toAst Nothing = Ast'Const Const'Null
+  toAst (Just x) = toAst x
+
+instance (ToAst a, ToAst b) => ToAst (Either a b) where
+  toAst (Left a) = Ast'Enumeral $ Enumeral "Left" $ Just $ Map.fromList [("left", toAst a)]
+  toAst (Right a) = Ast'Enumeral $ Enumeral "Right" $ Just $ Map.fromList [("right", toAst a)]
+
 --
 
 instance (ToAst t1, ToAst t2) => ToAst (t1, t2) where
