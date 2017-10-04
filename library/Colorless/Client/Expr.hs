@@ -522,7 +522,7 @@ class ToArgs a where
 instance ToArgs () where
   toArgs _ = []
 
-instance ToAst a => ToArgs (Expr a) where
+instance (ToAst a, HasType a) => ToArgs (Expr a) where
   toArgs x = [toAst x]
 
 instance (HasType t1, ToAst t1, HasType t2, ToAst t2) => ToArgs (t1, t2) where
