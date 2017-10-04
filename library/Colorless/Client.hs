@@ -6,4 +6,4 @@ module Colorless.Client
 
 import Colorless.Val
 import Colorless.Types
-import Colorless.Client.Expr hiding (unsafeExpr, unsafeRef, unsafeStmt, unsafePath)
+import Colorless.Client.Expr hiding (unsafeExpr, unsafeStructExpr, unsafeEnumeralExpr, unsafeRef, unsafeStmt, unsafePath, exprJSON)

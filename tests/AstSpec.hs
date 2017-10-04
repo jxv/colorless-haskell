@@ -26,15 +26,15 @@ spec = do
     context "Type" $ do
       it "string only" $ shouldBe
         (parseMaybe parseJSON (String "MyType"))
-        (Just $ Type "MyType" Nothing)
+        (Just $ Type "MyType" [])
 
       it "object with no param" $ shouldBe
         (parseMaybe parseJSON $ object ["n" .= String "MyType"])
-        (Just $ Type "MyType" Nothing)
+        (Just $ Type "MyType" [])
 
       it "object with param" $ shouldBe
         (parseMaybe parseJSON $ object ["n" .= String "MyType", "p" .= String "MyParam"])
-        (Just $ Type "MyType" (Just $ Type "MyParam" Nothing))
+        (Just $ Type "MyType" ["MyParam"])
 
   describe "parse Ast" $ do
     it "Ref" $ shouldBe
@@ -62,7 +62,7 @@ spec = do
     context "Lambda" $ do
       it "simple" $ shouldBe
         (parseAst $ Array $ V.fromList ["fn", Array $ V.fromList [ object [ "myVar" .= String "Int64" ] ], Bool True])
-        (Just $ Ast'Lambda $ Lambda [("myVar", Type "Int64" Nothing)] (Ast'Const $ Const'Bool True))
+        (Just $ Ast'Lambda $ Lambda [("myVar", Type "Int64" [])] (Ast'Const $ Const'Bool True))
 
     context "List" $ do
       it "simple" $ shouldBe
@@ -96,7 +96,7 @@ spec = do
     context "StructCall" $ do
       it "simple" $ shouldBe
         (parseAst $ object [ "n" .= String "MyStruct", "m" .= object [ "x" .= Bool True ] ])
-        (Just $ Ast'StructCall $ StructCall "MyStruct" (Map.fromList [("x", Ast'Const $ Const'Bool True)]))
+        (Just $ Ast'StructCall $ StructCall "MyStruct" (Ast'Struct $ Struct $ Map.fromList [("x", Ast'Const $ Const'Bool True)]))
 
     context "HollowCall" $ do
       it "simple" $ shouldBe

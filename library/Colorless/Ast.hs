@@ -58,6 +58,9 @@ data Ast
 class ToAst a where
   toAst :: a -> Ast
 
+instance ToAst () where
+  toAst () = Ast'Const Const'Null
+
 instance ToAst Bool where
   toAst b = Ast'Const (Const'Bool b)
 
@@ -98,6 +101,134 @@ num :: (Num a, ToJSON a) => a -> Ast
 num n = case toJSON n of
   Number a -> Ast'Const (Const'Number a)
   _ -> error "should never reach here"
+
+--
+
+instance (ToAst t1, ToAst t2) => ToAst (t1, t2) where
+  toAst (t1, t2) = Ast'Tuple $ Tuple [toAst t1, toAst t2]
+
+instance (ToAst t1, ToAst t2, ToAst t3) => ToAst (t1, t2, t3) where
+  toAst (t1, t2, t3) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4) => ToAst (t1, t2, t3, t4) where
+  toAst (t1, t2, t3, t4) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5) => ToAst (t1, t2, t3, t4, t5) where
+  toAst (t1, t2, t3, t4, t5) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6) => ToAst (t1, t2, t3, t4, t5, t6) where
+  toAst (t1, t2, t3, t4, t5, t6) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7) => ToAst (t1, t2, t3, t4, t5, t6, t7) where
+  toAst (t1, t2, t3, t4, t5, t6, t7) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27, ToAst t28) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27, ToAst t28, ToAst t29) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27, ToAst t28, ToAst t29, ToAst t30) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27, ToAst t28, ToAst t29, ToAst t30, ToAst t31) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30, toAst t31]
+
+instance (ToAst t1, ToAst t2, ToAst t3, ToAst t4, ToAst t5, ToAst t6, ToAst t7, ToAst t8, ToAst t9, ToAst t10, ToAst t11, ToAst t12, ToAst t13, ToAst t14, ToAst t15, ToAst t16, ToAst t17, ToAst t18, ToAst t19, ToAst t20, ToAst t21, ToAst t22, ToAst t23, ToAst t24, ToAst t25, ToAst t26, ToAst t27, ToAst t28, ToAst t29, ToAst t30, ToAst t31, ToAst t32) => ToAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32) where
+  toAst (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32) = Ast'Tuple $ Tuple [toAst t1, toAst t2, toAst t3, toAst t4, toAst t5, toAst t6, toAst t7, toAst t8, toAst t9, toAst t10, toAst t11, toAst t12, toAst t13, toAst t14, toAst t15, toAst t16, toAst t17, toAst t18, toAst t19, toAst t20, toAst t21, toAst t22, toAst t23, toAst t24, toAst t25, toAst t26, toAst t27, toAst t28, toAst t29, toAst t30, toAst t31, toAst t32]
+
+{-
+var tuples = [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32];
+var toAstTuple = n => {
+  if (n < 2) {
+    return '';
+  }
+
+  var l = ['instance (ToAst t1'];
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', ToAst t', i + 1]);
+  }
+  l = l.concat([') => ToAst (t1']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', t', i + 1]);
+  }
+  l = l.concat([') where\n']);
+
+  l = l.concat(['  toAst (t1']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', t', i + 1]);
+  }
+  l = l.concat([') = Ast\'Tuple $ Tuple [toAst t1']);
+  for (var i = 1; i < n; i++) {
+    l = l.concat([', toAst t', i + 1]);
+  }
+  l = l.concat([']\n\n']);
+
+  return l.join('');
+};
+-}
+
+--
 
 instance FromJSON Ast where
   parseJSON v

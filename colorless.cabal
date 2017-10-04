@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           colorless
-version:        2.2.1
+version:        2.2.2
 synopsis:       Colorless
 description:    Colorless
 category:       Web
@@ -69,6 +69,7 @@ test-suite colorless-suite
     , vector
   other-modules:
       AstSpec
+      ClientSpec
       ExprSpec
       ValSpec
   default-language: Haskell2010
