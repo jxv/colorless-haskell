@@ -7,7 +7,7 @@ module Colorless.Client.Expr
   , exprJSON
   , stmt
   --
-  , appendMember
+  , appendExpr
   , (<:>)
   --
   , begin
@@ -145,6 +145,7 @@ module Colorless.Client.Expr
   --
   , unsafeExpr
   , unsafeRef
+  , unsafeWrapExpr
   , unsafeStructExpr
   , unsafeEnumeralExpr
   , unsafeStmt
@@ -170,34 +171,39 @@ exprJSON = toJSON . toAst
 -- Don't export constructors
 data Expr a
   = Expr Ast
-  | Expr'Ctor Ctor (Map MemberName Ast)
+  | Expr'WrapCtor
+  | Expr'MembersCtor MembersCtor (Map MemberName Ast)
 
-newtype Ctor = Ctor (Ast -> Map MemberName Ast -> Either (Map MemberName Ast, Ctor) Ast)
+newtype MembersCtor = MembersCtor (Ast -> Map MemberName Ast -> Either (Map MemberName Ast, MembersCtor) Ast)
 
-structCtor :: [MemberName] -> Ctor
+unsafeWrapExpr :: Expr a
+unsafeWrapExpr = Expr'WrapCtor
+
+structCtor :: [MemberName] -> MembersCtor
 structCtor [] = error "need members"
-structCtor (n:[]) = Ctor $ \ast m -> Right (Ast.Ast'Struct $ Ast.Struct $ Map.insert n ast m)
-structCtor (n:ns) = Ctor $ \ast m -> Left (Map.insert n ast m, structCtor ns)
+structCtor (n:[]) = MembersCtor $ \ast m -> Right (Ast.Ast'Struct $ Ast.Struct $ Map.insert n ast m)
+structCtor (n:ns) = MembersCtor $ \ast m -> Left (Map.insert n ast m, structCtor ns)
 
 unsafeStructExpr :: [MemberName] -> Expr a
-unsafeStructExpr ns = Expr'Ctor (structCtor ns) Map.empty
+unsafeStructExpr ns = Expr'MembersCtor (structCtor ns) Map.empty
 
-enumeralCtor :: EnumeralName -> [MemberName] -> Ctor
+enumeralCtor :: EnumeralName -> [MemberName] -> MembersCtor
 enumeralCtor _ [] = error "need members"
-enumeralCtor tag (n:[]) = Ctor $ \ast m -> Right (Ast.Ast'Enumeral $ Ast.Enumeral tag $ Just $ Map.insert n ast m)
-enumeralCtor tag (n:ns) = Ctor $ \ast m -> Left (Map.insert n ast m, enumeralCtor tag ns)
+enumeralCtor tag (n:[]) = MembersCtor $ \ast m -> Right (Ast.Ast'Enumeral $ Ast.Enumeral tag $ Just $ Map.insert n ast m)
+enumeralCtor tag (n:ns) = MembersCtor $ \ast m -> Left (Map.insert n ast m, enumeralCtor tag ns)
 
 unsafeEnumeralExpr :: EnumeralName -> [MemberName] -> Expr a
-unsafeEnumeralExpr tag ns = Expr'Ctor (enumeralCtor tag ns) Map.empty
+unsafeEnumeralExpr tag ns = Expr'MembersCtor (enumeralCtor tag ns) Map.empty
 
-appendMember :: Expr (a -> b) -> Expr a -> Expr b
-appendMember (Expr'Ctor (Ctor c) m) (Expr a) = case c a m of
-  Left (m', ctor) -> Expr'Ctor ctor m'
+appendExpr :: Expr (a -> b) -> Expr a -> Expr b
+appendExpr (Expr'MembersCtor (MembersCtor c) m) (Expr a) = case c a m of
+  Left (m', ctor) -> Expr'MembersCtor ctor m'
   Right ast -> Expr ast
-appendMember _ _ = error "cannot not append member"
+appendExpr Expr'WrapCtor (Expr a) = Expr a
+appendExpr _ _ = error "cannot not append member"
 
 (<:>) :: Expr (a -> b) -> Expr a -> Expr b
-(<:>) = appendMember
+(<:>) = appendExpr
 
 instance HasType a => HasType (Expr a) where
   getType p = getType (cvt p)
@@ -213,7 +219,8 @@ unsafeRef s = Expr (Ast'Ref $ Ast.Ref s)
 
 instance ToAst (Expr a) where
   toAst (Expr v) = v
-  toAst (Expr'Ctor _ _) = error "Unevaluated expression constructor cannot convert into an AST"
+  toAst Expr'WrapCtor = error "Unevaluated wrap constructor expression cannot into an AST"
+  toAst (Expr'MembersCtor _ _) = error "Unevaluated member constructor expression cannot convert into an AST"
 
 -- Don't export constructor
 data Stmt a = Stmt
@@ -948,7 +955,8 @@ data Fn a
 
 call :: ToArgs args => Expr (Fn (args -> a)) -> args -> Expr a
 call (Expr f) args = Expr $ Ast'FnCall $ Ast.FnCall f (toArgs args)
-call (Expr'Ctor _ _) _ = error "Unevalated expression contructor cannot be called"
+call Expr'WrapCtor _ = error "Unevalated wrap contructor expression cannot be called"
+call (Expr'MembersCtor _ _) _ = error "Unevalated member contructor expression cannot be called"
 
 (-<) :: ToArgs args => Expr (Fn (args -> a)) -> args -> Expr a
 f -< x = call f x
