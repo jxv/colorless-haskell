@@ -293,7 +293,7 @@ evalUnVal unVal envRef = case unVal of
   UnVal'UnWrap UnWrap{w} -> do
     w' <- eval w envRef
     case w' of
-      Expr'Val (Val'Const c) -> return $ Expr'Val $ Val'ApiVal $ ApiVal'Wrap $ Wrap c
+      Expr'Val (Val'Const c) -> return $ Expr'Val $ Val'Const c
       _ -> runtimeThrow RuntimeError'IncompatibleType
 
   UnVal'UnEnumeral UnEnumeral{tag,m} -> do
@@ -326,7 +326,6 @@ getter path expr =
     _ -> runtimeThrow RuntimeError'IncompatibleType
 
 getterApiVal :: (MonadIO m, RuntimeThrower m) => [Text] -> ApiVal -> Eval m (Expr m)
-getterApiVal ("w":path) (ApiVal'Wrap (Wrap w)) = getter path (Expr'Val (Val'Const w))
 getterApiVal (mName:path) (ApiVal'Struct Struct{m}) =
   case Map.lookup (MemberName mName) m of
     Nothing -> runtimeThrow RuntimeError'IncompatibleType
@@ -672,4 +671,4 @@ parseApiCall ApiParser{hollow, struct, enumeration, wrap} = \case
   ApiCall'Hollow n -> Map.lookup n hollow
   ApiCall'Struct n s -> join $ ($ Val'ApiVal (ApiVal'Struct s)) <$> Map.lookup n struct
   ApiCall'Enumeration n e -> join $ ($ Val'ApiVal (ApiVal'Enumeral e)) <$> Map.lookup n enumeration
-  ApiCall'Wrap n w -> join $ ($ Val'ApiVal (ApiVal'Wrap w)) <$> Map.lookup n wrap
+  ApiCall'Wrap n (Wrap w) -> join $ ($ Val'Const w) <$> Map.lookup n wrap

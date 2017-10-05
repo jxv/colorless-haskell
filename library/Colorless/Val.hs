@@ -54,29 +54,23 @@ instance FromJSON Val where
     v@Object{} -> Val'ApiVal <$> parseJSON v
 
 data ApiVal
-  = ApiVal'Wrap Wrap
-  | ApiVal'Struct Struct
+  = ApiVal'Struct Struct
   | ApiVal'Enumeral Enumeral
   deriving (Show, Eq)
 
 instance ToJSON ApiVal where
   toJSON = \case
-    ApiVal'Wrap w -> toJSON w
     ApiVal'Struct s -> toJSON s
     ApiVal'Enumeral e -> toJSON e
 
 instance FromJSON ApiVal where
   parseJSON v =
-    (ApiVal'Wrap <$> parseJSON v) <|>
     (ApiVal'Enumeral <$> parseJSON v) <|>
     (ApiVal'Struct <$> parseJSON v)
 
 data Wrap = Wrap
   { w :: Const
-  } deriving (Show, Eq, Generic)
-
-instance ToJSON Wrap
-instance FromJSON Wrap
+  } deriving (Show, Eq)
 
 data Struct = Struct
   { m :: Map MemberName Val
