@@ -36,6 +36,7 @@ library
     , random
     , scientific
     , text
+    , text-conversions
     , unordered-containers
     , vector
   exposed-modules:
@@ -44,6 +45,7 @@ library
       Colorless.Client.Exchange
       Colorless.Client.Expr
       Colorless.Endpoint
+      Colorless.Imports
       Colorless.Prim
       Colorless.Server
       Colorless.Server.Exchange

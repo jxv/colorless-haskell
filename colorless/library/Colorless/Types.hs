@@ -141,7 +141,7 @@ data Options = Options
 --
 
 newtype Symbol = Symbol Text
-  deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey,  IsString)
+  deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey, IsString)
 
 data Type = Type
   { n :: TypeName

@@ -42,6 +42,7 @@ library:
   - random
   - scientific
   - text
+  - text-conversions
   - unordered-containers
   - vector
   source-dirs: library
