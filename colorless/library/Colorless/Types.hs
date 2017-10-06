@@ -4,6 +4,7 @@ module Colorless.Types
   , Major(..)
   , Minor(..)
   , Pull(..)
+  , pullAddress
   , RuntimeError(..)
   , RuntimeThrower(..)
   , Options(..)
@@ -22,6 +23,7 @@ import qualified Data.HashMap.Lazy as HML
 import Control.Monad (mzero)
 import Data.Aeson
 import Data.Text (Text)
+import Data.Text.Conversions (toText)
 import Data.String (IsString(..))
 import Data.Scientific
 import Data.Proxy
@@ -47,6 +49,9 @@ data Pull = Pull
   , path :: Text
   , port :: Int
   } deriving (Show, Eq)
+
+pullAddress :: Pull -> Text
+pullAddress Pull{port,host,protocol,path} = mconcat [protocol, "://", host, ":", toText $ show port,  path]
 
 data Version = Version
   { major :: Major
