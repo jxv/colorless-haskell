@@ -43,7 +43,7 @@ instance ToJSON Minor
 
 data Pull = Pull
   { protocol :: Text
-  , address :: Text
+  , host :: Text
   , path :: Text
   , port :: Int
   } deriving (Show, Eq)
