@@ -1,5 +1,8 @@
 module Colorless.Client.HttpClient
   ( sendRequest
+  , Manager
+  , RequestHeaders
+  , HttpClientResponse
   ) where
 
 import qualified Network.HTTP.Client as HttpClient
@@ -12,13 +15,15 @@ import Data.Text.Conversions (fromText)
 import Colorless.Client
 import Colorless.Ast (ToAst)
 
+type HttpClientResponse = HttpClient.Response
+
 sendRequest
   :: (HasType meta, ToJSON meta, ToAst a, HasType a, FromJSON a, HasType err, FromJSON err)
   => Manager
   -> Pull
   -> RequestHeaders
   -> Request meta a
-  -> IO (HttpClient.Response BL.ByteString, Maybe (Response err a))
+  -> IO (HttpClientResponse BL.ByteString, Maybe (Response err a))
 sendRequest manager pull headers req = do
   initialRequest <- parseRequest (fromText $ pullAddress pull)
   let request = initialRequest
