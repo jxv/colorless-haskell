@@ -14,6 +14,7 @@ import Data.Text (Text)
 import Data.Map (Map)
 
 import Colorless.Types
+import Colorless.Server.Exchange
 
 runColorlessSingleton
   :: (MonadIO m, RuntimeThrower m)

@@ -4,9 +4,6 @@ module Colorless.Types
   , Major(..)
   , Minor(..)
   , Pull(..)
-  , Request(..)
-  , Response(..)
-  , ResponseError(..)
   , RuntimeError(..)
   , RuntimeThrower(..)
   , Options(..)
@@ -59,17 +56,6 @@ data Version = Version
 instance ToJSON Version
 instance FromJSON Version
 
-data Request = Request
-  { meta :: Value
-  , query :: Value
-  } deriving (Show, Eq)
-
-instance FromJSON Request where
-  parseJSON (Object o) = Request
-    <$> o .: "meta"
-    <*> o .: "query"
-  parseJSON _ = mzero
-
 data RuntimeError
   = RuntimeError'UnparsableFormat
   | RuntimeError'UnrecognizedCall
@@ -116,24 +102,31 @@ instance ToJSON RuntimeError where
     where
       e s = object [ "tag" .= String s ]
 
-data ResponseError
-  = ResponseError'Service Value
-  | ResponseError'Runtime RuntimeError
-  deriving (Eq, Show)
-
-instance ToJSON ResponseError where
-  toJSON = \case
-    ResponseError'Service m -> object [ "tag" .= String "Service", "service" .= m ]
-    ResponseError'Runtime m -> object [ "tag" .= String "Runtime", "runtime" .= m ]
-
-data Response
-  = Response'Error ResponseError
-  | Response'Success Value
-  deriving (Show, Eq)
-
-instance ToJSON Response where
-  toJSON (Response'Error m) = object [ "tag" .= String "Error", "error" .= m ]
-  toJSON (Response'Success m) = object [ "tag" .= String "Success", "success" .= m ]
+instance FromJSON RuntimeError where
+  parseJSON (Object o) = do
+    tag <- o .: "tag"
+    case tag :: Text of
+      "UnparsableFormat" -> pure RuntimeError'UnparsableFormat
+      "UnrecognizedCall" -> pure RuntimeError'UnrecognizedCall
+      "VariableLimit" -> pure RuntimeError'VariableLimit
+      "UnknownVariable" -> RuntimeError'UnknownVariable <$> o .: "name"
+      "IncompatibleType" -> pure RuntimeError'IncompatibleType
+      "TooFewArguments" -> pure RuntimeError'TooFewArguments
+      "TooManyArguments" -> pure RuntimeError'TooManyArguments
+      "NoApiVersion" -> pure RuntimeError'NoApiVersion
+      "NoColorlessVersion" -> pure RuntimeError'NoColorlessVersion
+      "ApiMajorVersionTooHigh" -> pure RuntimeError'ApiMajorVersionTooHigh
+      "ApiMajorVersionTooLow" -> pure RuntimeError'ApiMajorVersionTooLow
+      "ApiMinorVersionTooHigh" -> pure RuntimeError'ApiMinorVersionTooHigh
+      "ColorlessMajorVersionTooHigh" -> pure RuntimeError'ColorlessMajorVersionTooHigh
+      "ColorlessMajorVersionTooLow" -> pure RuntimeError'ColorlessMajorVersionTooLow
+      "ColorlessMinorVersionTooHigh" -> pure RuntimeError'ColorlessMinorVersionTooHigh
+      "UnparsableMeta" -> pure RuntimeError'UnparsableMeta
+      "UnparsableQuery" -> pure RuntimeError'UnparsableQuery
+      "NoImplementation" -> pure RuntimeError'NoImplementation
+      "NotMember" -> pure RuntimeError'NotMember
+      _ -> mzero
+  parseJSON _ = mzero
 
 class Monad m => RuntimeThrower m where
   runtimeThrow :: RuntimeError -> m a

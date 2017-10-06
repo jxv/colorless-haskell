@@ -41,10 +41,12 @@ library
   exposed-modules:
       Colorless.Ast
       Colorless.Client
+      Colorless.Client.Exchange
       Colorless.Client.Expr
       Colorless.Endpoint
       Colorless.Prim
       Colorless.Server
+      Colorless.Server.Exchange
       Colorless.Server.Expr
       Colorless.Types
       Colorless.Val
