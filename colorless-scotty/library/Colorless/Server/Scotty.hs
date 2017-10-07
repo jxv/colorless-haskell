@@ -1,14 +1,24 @@
 module Colorless.Server.Scotty
-  ( sendResponse
+  ( runServer
+  , sendResponse
   , sendResponseSingleton
   , getSpec
   ) where
 
+import qualified Network.Wai as Wai
 import Web.Scotty.Trans
 import Control.Monad.Trans (lift)
 import Colorless.Server (Pull(..), RuntimeThrower, Request, Response, Version, Major, Minor)
 import Colorless.Imports
 import Colorless.Endpoint
+
+runServer
+  :: (MonadIO m, RuntimeThrower m, MonadIO n)
+  => Pull
+  -> (m Wai.Response -> IO Wai.Response)
+  -> ScottyT e m ()
+  -> n ()
+runServer Pull{port} = scottyT port
 
 sendResponse
   :: (ScottyError e, MonadIO m, RuntimeThrower m)
