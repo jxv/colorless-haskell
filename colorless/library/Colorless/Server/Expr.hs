@@ -548,8 +548,9 @@ boolExpr :: RuntimeThrower m
   -> (Word16 -> Word16 -> Bool)
   -> (Word32 -> Word32 -> Bool)
   -> (Word64 -> Word64 -> Bool)
+  -> (Val -> Val -> Bool)
   -> Expr m
-boolExpr num i8 i16 i32 i64 u8 u16 u32 u64 = Expr'Fn . Fn $ \args ->
+boolExpr num i8 i16 i32 i64 u8 u16 u32 u64 val = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooManyArguments
     [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> toExpr $ x `num` y
@@ -618,16 +619,18 @@ boolExpr num i8 i16 i32 i64 u8 u16 u32 u64 = Expr'Fn . Fn $ \args ->
       Just y' -> toExpr $ x `u64` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
+    [Expr'Val x, Expr'Val y] -> toExpr $ x `val` y
+
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooManyArguments
     where
       toExpr v = return $ Expr'Val (toVal v)
 
 eqExpr :: RuntimeThrower m => Expr m
-eqExpr = boolExpr (==) (==) (==) (==) (==) (==) (==) (==) (==)
+eqExpr = boolExpr (==) (==) (==) (==) (==) (==) (==) (==) (==) (==)
 
 neqExpr :: RuntimeThrower m => Expr m
-neqExpr = boolExpr (/=) (/=) (/=) (/=) (/=) (/=) (/=) (/=) (/=)
+neqExpr = boolExpr (/=) (/=) (/=) (/=) (/=) (/=) (/=) (/=) (/=) (/=)
 
 concatExpr :: RuntimeThrower m => Expr m
 concatExpr = Expr'Fn . Fn $ \args ->
