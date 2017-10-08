@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           colorless
-version:        2.2.8
+version:        2.2.9
 synopsis:       Colorless
 description:    Colorless
 category:       Web
@@ -47,9 +47,11 @@ library
       Colorless.Endpoint
       Colorless.Imports
       Colorless.Prim
+      Colorless.RuntimeThrower
       Colorless.Server
       Colorless.Server.Exchange
       Colorless.Server.Expr
+      Colorless.ServiceThrower
       Colorless.Types
       Colorless.Val
   default-language: Haskell2010

@@ -7,6 +7,7 @@ module Colorless.Endpoint
 import qualified Data.Map as Map
 import qualified Data.HashMap.Lazy as HML
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Except
 import Control.Concurrent.Async.Lifted ()
 import Data.Aeson
 import Data.Aeson.Types (parseMaybe)
@@ -15,39 +16,42 @@ import Data.Map (Map)
 
 import Colorless.Types
 import Colorless.Server.Exchange
+import Colorless.RuntimeThrower
 
 runColorlessSingleton
-  :: (MonadIO m, RuntimeThrower m)
+  :: MonadIO m
   => Version
-  -> (Request -> m Response)
+  -> (Request -> m (Either Response Response))
   -> Value
   -> m Value
 runColorlessSingleton Version{major,minor} handleRequest = runColorless (Map.singleton major (minor, handleRequest))
 
 runColorless
-  :: (MonadIO m, RuntimeThrower m)
-  => Map Major (Minor, Request -> m Response)
+  :: MonadIO m
+  => Map Major (Minor, Request -> m (Either Response Response))
   -> Value
   -> m Value
 runColorless handleRequestMap v = do
-  colorlessVersion <- getColorlessVersion v
-  assertColorlessVersionCompatiability colorlessVersion
-  apiVersion <- getApiVersion v
-  let apiMajor = major apiVersion
-  case Map.lookup apiMajor handleRequestMap of
-    Nothing -> case leastAndGreatest (Map.keys handleRequestMap) of
-      Nothing -> runtimeThrow RuntimeError'NoImplementation
-      Just (minMajor, maxMajor) ->
-        if minMajor > apiMajor
-          then runtimeThrow RuntimeError'ApiMajorVersionTooLow
-          else if maxMajor < apiMajor
-            then runtimeThrow RuntimeError'ApiMajorVersionTooHigh
-            else runtimeThrow RuntimeError'NoImplementation
-    Just (maxMinor, handleRequest) -> if minor apiVersion > maxMinor
-      then runtimeThrow RuntimeError'ApiMinorVersionTooHigh
-      else case parseRequest v of
-        Nothing -> runtimeThrow RuntimeError'UnparsableFormat
-        Just req -> toJSON <$> handleRequest req
+  e <- runExceptT $ do
+    colorlessVersion <- getColorlessVersion v
+    assertColorlessVersionCompatiability colorlessVersion
+    apiVersion <- getApiVersion v
+    let apiMajor = major apiVersion
+    case Map.lookup apiMajor handleRequestMap of
+      Nothing -> case leastAndGreatest (Map.keys handleRequestMap) of
+        Nothing -> runtimeThrow RuntimeError'NoImplementation
+        Just (minMajor, maxMajor) ->
+          if minMajor > apiMajor
+            then runtimeThrow RuntimeError'ApiMajorVersionTooLow
+            else if maxMajor < apiMajor
+              then runtimeThrow RuntimeError'ApiMajorVersionTooHigh
+              else runtimeThrow RuntimeError'NoImplementation
+      Just (maxMinor, handleRequest) -> if minor apiVersion > maxMinor
+        then runtimeThrow RuntimeError'ApiMinorVersionTooHigh
+        else case parseRequest v of
+          Nothing -> runtimeThrow RuntimeError'UnparsableFormat
+          Just req -> toJSON <$> ExceptT (handleRequest req)
+  return $ either toJSON id e
 
 leastAndGreatest :: Ord a => [a] -> Maybe (a,a)
 leastAndGreatest [] = Nothing

@@ -6,8 +6,8 @@ module Colorless.Types
   , Pull(..)
   , pullAddress
   , RuntimeError(..)
-  , RuntimeThrower(..)
   , Options(..)
+  , defOptions
   --
   , Symbol(..)
   , Type(..)
@@ -133,15 +133,14 @@ instance FromJSON RuntimeError where
       _ -> mzero
   parseJSON _ = mzero
 
-class Monad m => RuntimeThrower m where
-  runtimeThrow :: RuntimeError -> m a
-
-instance RuntimeThrower IO where
-  runtimeThrow err = error $ "Runtime error - " ++ show err
-
 data Options = Options
   { variableLimit :: Maybe Int
   } deriving (Show, Eq)
+
+defOptions :: Options
+defOptions = Options
+  { variableLimit = Just 100
+  }
 
 --
 

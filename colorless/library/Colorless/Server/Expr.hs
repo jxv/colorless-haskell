@@ -58,6 +58,7 @@ import Colorless.Types
 import Colorless.Ast (Ast(..))
 import Colorless.Val
 import Colorless.Prim
+import Colorless.RuntimeThrower
 
 data EvalConfig m = EvalConfig
   { options :: Options
