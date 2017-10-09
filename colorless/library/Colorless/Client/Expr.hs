@@ -10,6 +10,7 @@ module Colorless.Client.Expr
   --
   , appendExpr
   , (<:>)
+  , (<:)
   --
   , begin
   , def
@@ -207,6 +208,9 @@ appendExpr _ _ = error "cannot not append member"
 
 (<:>) :: Expr (a -> b) -> Expr a -> Expr b
 (<:>) = appendExpr
+
+(<:) :: ToExpr a => Expr (a -> b) -> a -> Expr b
+(<:) f a = appendExpr f (ex a)
 
 instance HasType a => HasType (Expr a) where
   getType p = getType (cvt p)
