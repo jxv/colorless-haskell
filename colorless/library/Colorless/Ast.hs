@@ -365,7 +365,7 @@ instance FromJSON List where
   parseJSON _ = mzero
 
 instance ToJSON List where
-  toJSON List{list} = toJSON $ "list" : map toJSON list
+  toJSON List{list} = toJSON $ "list" : [toJSON list]
 
 data Tuple = Tuple
   { tuple :: [Ast]
