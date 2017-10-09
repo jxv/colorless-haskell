@@ -328,44 +328,31 @@ class (HasType a, ToAst a) => ToExpr a where
 
 --
 
-instance ToExpr () where
-  ex _ = unit
+instance ToExpr ()
 
-instance ToExpr Bool where
-  ex = bool
+instance ToExpr Bool
 
-instance ToExpr T.Text where
-  ex = string
+instance ToExpr T.Text
 
-instance ToExpr Int8 where
-  ex = i8
+instance ToExpr Int8
 
-instance ToExpr Int16 where
-  ex = i16
+instance ToExpr Int16
 
-instance ToExpr Int32 where
-  ex = i32
+instance ToExpr Int32
 
-instance ToExpr Int64 where
-  ex = i64
+instance ToExpr Int64
 
-instance ToExpr Word8 where
-  ex = u8
+instance ToExpr Word8
 
-instance ToExpr Word16 where
-  ex = u16
+instance ToExpr Word16
 
-instance ToExpr Word32 where
-  ex = u32
+instance ToExpr Word32
 
-instance ToExpr Word64 where
-  ex = u64
+instance ToExpr Word64
 
-instance ToExpr Float where
-  ex = f32
+instance ToExpr Float
 
-instance ToExpr Double where
-  ex = f64
+instance ToExpr Double
 
 --
 
@@ -373,40 +360,48 @@ unit :: Expr ()
 unit = Expr (toAst ())
 
 bool :: Bool -> Expr Bool
-bool = Expr . toAst
+bool = ex
 
 string :: T.Text -> Expr T.Text
-string = Expr . toAst
+string = ex
 
 i8 :: Int8 -> Expr Int8
-i8 = Expr . toAst
+i8 = ex
 
 i16 :: Int16 -> Expr Int16
-i16 = Expr . toAst
+i16 = ex
 
 i32 :: Int32 -> Expr Int32
-i32 = Expr . toAst
+i32 = ex
 
 i64 :: Int64 -> Expr Int64
-i64 = Expr . toAst
+i64 = ex
 
 u8 :: Word8 -> Expr Word8
-u8 = Expr . toAst
+u8 = ex
 
 u16 :: Word16 -> Expr Word16
-u16 = Expr . toAst
+u16 = ex
 
 u32 :: Word32 -> Expr Word32
-u32 = Expr . toAst
+u32 = ex
 
 u64 :: Word64 -> Expr Word64
-u64 = Expr . toAst
+u64 = ex
 
 f32 :: Float -> Expr Float
-f32 = Expr . toAst
+f32 = ex
 
 f64 :: Double -> Expr Double
-f64 = Expr . toAst
+f64 = ex
+
+--
+
+instance ToExpr a => ToExpr [a]
+
+instance ToExpr a => ToExpr (Maybe a)
+
+instance (ToExpr a, ToExpr b) => ToExpr (Either a b)
 
 --
 
@@ -797,98 +792,67 @@ tuple32'
   -> Expr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32)
 tuple32' t = Expr (toAst t)
 
-instance (ToExpr t1, ToExpr t2) => ToExpr (t1, t2) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2) => ToExpr (t1, t2)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3) => ToExpr (t1, t2, t3) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3) => ToExpr (t1, t2, t3)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4) => ToExpr (t1, t2, t3, t4) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4) => ToExpr (t1, t2, t3, t4)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5) => ToExpr (t1, t2, t3, t4, t5) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5) => ToExpr (t1, t2, t3, t4, t5)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6) => ToExpr (t1, t2, t3, t4, t5, t6) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6) => ToExpr (t1, t2, t3, t4, t5, t6)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7) => ToExpr (t1, t2, t3, t4, t5, t6, t7) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7) => ToExpr (t1, t2, t3, t4, t5, t6, t7)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27, ToExpr t28) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27, ToExpr t28) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27, ToExpr t28, ToExpr t29) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27, ToExpr t28, ToExpr t29) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27, ToExpr t28, ToExpr t29, ToExpr t30) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27, ToExpr t28, ToExpr t29, ToExpr t30) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27, ToExpr t28, ToExpr t29, ToExpr t30, ToExpr t31) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27, ToExpr t28, ToExpr t29, ToExpr t30, ToExpr t31) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31)
 
-instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27, ToExpr t28, ToExpr t29, ToExpr t30, ToExpr t31, ToExpr t32) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32) where
-  ex = Expr . toAst
+instance (ToExpr t1, ToExpr t2, ToExpr t3, ToExpr t4, ToExpr t5, ToExpr t6, ToExpr t7, ToExpr t8, ToExpr t9, ToExpr t10, ToExpr t11, ToExpr t12, ToExpr t13, ToExpr t14, ToExpr t15, ToExpr t16, ToExpr t17, ToExpr t18, ToExpr t19, ToExpr t20, ToExpr t21, ToExpr t22, ToExpr t23, ToExpr t24, ToExpr t25, ToExpr t26, ToExpr t27, ToExpr t28, ToExpr t29, ToExpr t30, ToExpr t31, ToExpr t32) => ToExpr (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32)
 
 {-
 
@@ -980,8 +944,7 @@ var tupleToExpr = n => {
   for (var i = 1; i < n; i++) {
     l = l.concat([', t', i + 1]);
   }
-  l = l.concat([') where\n']);
-  l = l.concat(['  ex = Expr . toAst\n\n']);
+  l = l.concat([')\n\n']);
   return l.join('');
 };
 
