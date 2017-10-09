@@ -12,7 +12,7 @@ module Colorless.Client.Expr
   , (<:>)
   , (<:)
   --
-  , begin
+  , dO
   , def
   , defn
   , defnRec
@@ -276,8 +276,8 @@ defnRec symbol f = Stmt
 stmt :: HasType a => Expr a -> Stmt (Expr a)
 stmt expr = Stmt [toAst expr] expr
 
-begin :: HasType a => Stmt (Expr a) -> Expr a
-begin (Stmt s _) = Expr (Ast'Begin $ Ast.Begin s)
+dO :: HasType a => Stmt (Expr a) -> Expr a
+dO (Stmt s _) = Expr (Ast'Do $ Ast.Do s)
 
 --
 

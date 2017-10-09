@@ -13,7 +13,7 @@ module Colorless.Server.Expr
   , Lambda(..)
   , Fn(..)
   , List(..)
-  , Begin(..)
+  , Do(..)
   , FnCall(..)
   , ApiUnCall(..)
   , HollowUnCall(..)
@@ -94,7 +94,7 @@ data Expr m
   | Expr'Tuple (Tuple m)
   | Expr'Fn (Fn m)
   | Expr'FnCall (FnCall m)
-  | Expr'Begin (Begin m)
+  | Expr'Do (Do m)
   | Expr'ApiUnCall (ApiUnCall m)
   deriving (Show, Eq)
 
@@ -159,7 +159,7 @@ data Tuple m = Tuple
   { tuple :: [Expr m]
   } deriving (Show, Eq)
 
-data Begin m = Begin
+data Do m = Do
   { exprs :: [Expr m]
   } deriving (Show, Eq)
 
@@ -219,7 +219,7 @@ fromAst = \case
   Ast'Lambda Ast.Lambda{args,expr} -> Expr'Lambda $ Lambda args (fromAst expr)
   Ast'List Ast.List{list} -> Expr'List $ List $ map fromAst list
   Ast'Tuple Ast.Tuple{tuple} -> Expr'Tuple $ Tuple $ map fromAst tuple
-  Ast'Begin Ast.Begin{vals} -> Expr'Begin $ Begin $ map fromAst vals
+  Ast'Do Ast.Do{vals} -> Expr'Do $ Do $ map fromAst vals
   Ast'FnCall Ast.FnCall{fn,args} -> Expr'FnCall $ FnCall (fromAst fn) (map fromAst args)
   Ast'WrapCall Ast.WrapCall{n,w} -> Expr'ApiUnCall $ ApiUnCall'WrapUnCall $ WrapUnCall n (fromAst w)
   Ast'HollowCall Ast.HollowCall{n} -> Expr'ApiUnCall $ ApiUnCall'HollowUnCall $ HollowUnCall n
@@ -269,7 +269,7 @@ eval expr envRef = case expr of
   Expr'List list -> evalList list envRef
   Expr'Tuple tuple -> evalTuple tuple envRef
   Expr'FnCall call -> evalFnCall call envRef
-  Expr'Begin begin -> evalBegin begin envRef
+  Expr'Do dO -> evalDo dO envRef
   Expr'ApiUnCall apiUnCall -> evalApiUnCall apiUnCall envRef
 
 forceVal :: (RuntimeThrower m) => Expr m -> Eval m Val
@@ -374,8 +374,8 @@ evalTuple Tuple{tuple} envRef = do
   tuple' <- mapM (\item -> eval item envRef) tuple
   return . Expr'Tuple $ Tuple tuple'
 
-evalBegin :: (MonadIO m, RuntimeThrower m) => Begin m -> IORef (Env m) -> Eval m (Expr m)
-evalBegin Begin{exprs} envRef = case exprs of
+evalDo :: (MonadIO m, RuntimeThrower m) => Do m -> IORef (Env m) -> Eval m (Expr m)
+evalDo Do{exprs} envRef = case exprs of
   [] -> return $ Expr'Val $ Val'Const $ Const'Null
   _ -> last <$> mapM (\expr -> eval expr envRef) exprs
 

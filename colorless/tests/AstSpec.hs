@@ -78,10 +78,10 @@ spec = do
         (parseAst $ toJSON [ "tuple", String "hello", String "world" ])
         (Just $ Ast'Tuple $ Tuple [Ast'Const $ Const'String "hello", Ast'Const $ Const'String "world"])
 
-    context "Begin" $ do
+    context "Do" $ do
       it "simple" $ shouldBe
-        (parseAst $ Array $ V.fromList ["begin", Bool True])
-        (Just $ Ast'Begin $ Begin [Ast'Const $ Const'Bool True])
+        (parseAst $ Array $ V.fromList ["do", Bool True])
+        (Just $ Ast'Do $ Do [Ast'Const $ Const'Bool True])
 
     context "FnCall" $ do
       it "simple" $ shouldBe

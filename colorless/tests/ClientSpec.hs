@@ -6,7 +6,7 @@ import Data.Int
 import Colorless.Client
 
 _helloWorld :: Expr (Int32, Int32)
-_helloWorld = begin $ do
+_helloWorld = dO $ do
   x <- def "x" (i32 0)
   f <- defn "f" (fn2 "a" "b" add)
   stmt $ tuple2 x (f -< (x, i32 10))

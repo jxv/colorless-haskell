@@ -9,7 +9,7 @@ module Colorless.Ast
   , Lambda(..)
   , List(..)
   , Tuple(..)
-  , Begin(..)
+  , Do(..)
   , FnCall(..)
   , Enumeral(..)
   , Struct(..)
@@ -43,7 +43,7 @@ data Ast
   | Ast'Lambda Lambda
   | Ast'List List
   | Ast'Tuple Tuple
-  | Ast'Begin Begin
+  | Ast'Do Do
   | Ast'FnCall FnCall
   | Ast'WrapCall WrapCall
   | Ast'StructCall StructCall
@@ -250,7 +250,7 @@ instance FromJSON Ast where
     <|> (Ast'Lambda <$> parseJSON v)
     <|> (Ast'List <$> parseJSON v)
     <|> (Ast'Tuple <$> parseJSON v)
-    <|> (Ast'Begin <$> parseJSON v)
+    <|> (Ast'Do <$> parseJSON v)
     <|> (Ast'FnCall <$> parseJSON v)
     <|> (Ast'EnumerationCall <$> parseJSON v)
     <|> (Ast'WrapCall <$> parseJSON v)
@@ -269,7 +269,7 @@ instance ToJSON Ast where
     Ast'Lambda a -> toJSON a
     Ast'List a -> toJSON a
     Ast'Tuple a -> toJSON a
-    Ast'Begin a -> toJSON a
+    Ast'Do a -> toJSON a
     Ast'FnCall a -> toJSON a
     Ast'EnumerationCall a -> toJSON a
     Ast'WrapCall a -> toJSON a
@@ -380,18 +380,18 @@ instance FromJSON Tuple where
 instance ToJSON Tuple where
   toJSON Tuple{tuple} = toJSON $ "tuple" : map toJSON tuple
 
-data Begin = Begin
+data Do = Do
   { vals :: [Ast]
   } deriving (Show, Eq)
 
-instance FromJSON Begin where
+instance FromJSON Do where
   parseJSON (Array arr) = case V.toList arr of
-    "begin":xs -> Begin <$> mapM parseJSON xs
+    "do":xs -> Do <$> mapM parseJSON xs
     _ -> mzero
   parseJSON _ = mzero
 
-instance ToJSON Begin where
-  toJSON Begin{vals} = toJSON $ "begin" : map toJSON vals
+instance ToJSON Do where
+  toJSON Do{vals} = toJSON $ "do" : map toJSON vals
 
 data FnCall = FnCall
   { fn :: Ast
