@@ -324,6 +324,7 @@ concaT x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "concat") [toAst x
 
 class (HasType a, ToAst a) => ToExpr a where
   ex :: a -> Expr a
+  ex = Expr . toAst
 
 --
 

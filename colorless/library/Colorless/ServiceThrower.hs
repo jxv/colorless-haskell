@@ -6,7 +6,6 @@ import Control.Monad.Except
 import Data.Aeson
 
 import qualified Colorless.Server.Exchange as Server
-import Colorless.Types
 
 class Monad m => ServiceThrower m where
   serviceThrow :: Value -> m a
