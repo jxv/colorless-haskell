@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           colorless
-version:        2.2.9
+version:        2.2.10
 synopsis:       Colorless
 description:    Colorless
 category:       Web

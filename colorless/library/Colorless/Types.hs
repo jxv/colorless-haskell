@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-dodgy-imports #-}
 {-# LANGUAGE DeriveGeneric #-}
 module Colorless.Types
   ( Version(..)
@@ -21,7 +22,7 @@ module Colorless.Types
 
 import qualified Data.HashMap.Lazy as HML
 import Control.Monad (mzero)
-import Data.Aeson
+import Data.Aeson hiding (Options)
 import Data.Text (Text)
 import Data.Text.Conversions (toText)
 import Data.String (IsString(..))

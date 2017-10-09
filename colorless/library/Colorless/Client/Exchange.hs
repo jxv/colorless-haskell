@@ -19,11 +19,11 @@ data Request meta a = Request
   , query :: Expr a
   }
 
-instance (ToJSON meta, ToAst a, HasType a) => ToJSON (Request meta a) where
+instance (ToAst meta, HasType meta, ToAst a, HasType a) => ToJSON (Request meta a) where
   toJSON Request{colorless, version, meta, query} = object
     [ "colorless" .= colorless
     , "version" .= version
-    , "meta" .= meta
+    , "meta" .= toAst meta
     , "query" .= exprJSON query
     ]
 
