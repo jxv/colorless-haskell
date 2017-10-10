@@ -3,9 +3,9 @@
 -- see: https://github.com/sol/hpack
 
 name:           colorless
-version:        2.2.14
-synopsis:       Colorless
-description:    Colorless
+version:        2.2.15
+synopsis:       Colorless | The Programmatic IDL
+description:    Colorless | The Programmatic IDL
 category:       Web
 maintainer:     Joe Vargas
 license:        BSD3

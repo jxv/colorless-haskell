@@ -1,8 +1,8 @@
 name: colorless
-version: '2.2.14'
+version: '2.2.15'
 category: Web
-synopsis: Colorless
-description: Colorless
+synopsis: Colorless | The Programmatic IDL
+description: Colorless | The Programmatic IDL
 maintainer: Joe Vargas
 license: BSD3
 extra-source-files:
