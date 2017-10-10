@@ -5,6 +5,7 @@ module Colorless.Imports
   , module Data.Text
   , module Data.Text.Conversions
   , module Data.ByteString.Lazy.Char8
+  , module Control.Exception.Safe
   ) where
 
 import Data.Map (Map, fromList, toList, empty, size)
@@ -13,3 +14,4 @@ import Data.Aeson (ToJSON(..), FromJSON(..), object, (.=), (.:), Value(..), deco
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Text (Text)
 import Data.Text.Conversions (ToText(..), FromText(..))
+import Control.Exception.Safe (MonadThrow, MonadCatch, catch)

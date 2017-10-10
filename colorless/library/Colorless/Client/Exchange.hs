@@ -10,6 +10,7 @@ import Data.Text (Text)
 
 import Colorless.Types (RuntimeError, HasType(..), Version(..))
 import Colorless.Ast (ToAst(..))
+import Colorless.Val (ToVal(..), FromVal(..))
 import Colorless.Client.Expr (Expr, exprJSON)
 
 data Request meta a = Request
@@ -19,11 +20,11 @@ data Request meta a = Request
   , query :: Expr a
   }
 
-instance (ToAst meta, HasType meta, ToAst a, HasType a) => ToJSON (Request meta a) where
+instance (ToVal meta, HasType meta, ToAst a, HasType a) => ToJSON (Request meta a) where
   toJSON Request{colorless, version, meta, query} = object
     [ "colorless" .= colorless
     , "version" .= version
-    , "meta" .= toAst meta
+    , "meta" .= toVal meta
     , "query" .= exprJSON query
     ]
 
@@ -32,18 +33,22 @@ data ResponseError err
   | ResponseError'Runtime RuntimeError
   deriving (Eq, Show)
 
-instance (FromJSON err, HasType err) => FromJSON (ResponseError err) where
+instance (FromVal err, HasType err) => FromJSON (ResponseError err) where
   parseJSON (Object o) = do
     tag <- o .: "tag"
     case tag :: Text of
-      "Service" -> ResponseError'Service <$> o .: "service"
+      "Service" -> do
+        m <- o .: "service"
+        case fromVal m of
+          Nothing -> mzero
+          Just v -> return $ ResponseError'Service v
       "Runtime" -> ResponseError'Runtime <$> o .: "runtime"
       _ -> mzero
   parseJSON _ = mzero
 
-instance ToJSON err => ToJSON (ResponseError err) where
+instance ToVal err => ToJSON (ResponseError err) where
   toJSON = \case
-    ResponseError'Service m -> object [ "tag" .= String "Service", "service" .= m ]
+    ResponseError'Service m -> object [ "tag" .= String "Service", "service" .= toVal m ]
     ResponseError'Runtime m -> object [ "tag" .= String "Runtime", "runtime" .= m ]
 
 data Response err a
@@ -51,15 +56,19 @@ data Response err a
   | Response'Success a
   deriving (Show, Eq)
 
-instance (FromJSON err, HasType err, FromJSON a, HasType a) => FromJSON (Response err a) where
+instance (FromVal err, HasType err, FromVal a, HasType a) => FromJSON (Response err a) where
   parseJSON (Object o) = do
     tag <- o .: "tag"
     case tag :: Text of
-      "Success" -> Response'Success <$> o .: "success"
+      "Success" -> do
+        m <- o .: "success"
+        case fromVal m of
+          Nothing -> mzero
+          Just v -> return $ Response'Success v
       "Error" -> Response'Error <$> o .: "error"
       _ -> mzero
   parseJSON _ = mzero
 
-instance (ToJSON err, ToJSON a) => ToJSON (Response err a) where
+instance (ToVal err, HasType err, ToVal a, HasType a) => ToJSON (Response err a) where
   toJSON (Response'Error m) = object [ "tag" .= String "Error", "error" .= m ]
-  toJSON (Response'Success m) = object [ "tag" .= String "Success", "success" .= m ]
+  toJSON (Response'Success m) = object [ "tag" .= String "Success", "success" .= toVal m ]

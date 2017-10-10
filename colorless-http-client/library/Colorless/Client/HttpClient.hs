@@ -18,7 +18,7 @@ import Colorless.Ast (ToAst)
 type HttpClientResponse = HttpClient.Response
 
 sendRequest
-  :: (HasType meta, ToAst meta, ToAst a, HasType a, FromJSON a, HasType err, FromJSON err)
+  :: (HasType meta, ToVal meta, ToAst a, HasType a, FromVal a, HasType err, FromVal err)
   => Manager
   -> Pull
   -> RequestHeaders
