@@ -82,6 +82,7 @@ data RuntimeError
   | RuntimeError'UnparsableQuery
   | RuntimeError'NoImplementation
   | RuntimeError'NotMember
+  | RuntimeError'LambdaNotPermitted
   deriving (Show, Eq)
 
 instance ToJSON RuntimeError where
@@ -105,6 +106,7 @@ instance ToJSON RuntimeError where
     RuntimeError'UnparsableQuery -> e "UnparsableQuery"
     RuntimeError'NoImplementation -> e "NoImplementation"
     RuntimeError'NotMember -> e "NotMember"
+    RuntimeError'LambdaNotPermitted -> e "LambdaNotPermitted"
     where
       e s = object [ "tag" .= String s ]
 
@@ -131,16 +133,19 @@ instance FromJSON RuntimeError where
       "UnparsableQuery" -> pure RuntimeError'UnparsableQuery
       "NoImplementation" -> pure RuntimeError'NoImplementation
       "NotMember" -> pure RuntimeError'NotMember
+      "LambdaNotPermitted" -> pure RuntimeError'LambdaNotPermitted
       _ -> mzero
   parseJSON _ = mzero
 
 data Options = Options
-  { variableLimit :: Maybe Int
+  { hardVariableLimit :: Maybe Int
+  , hardDisableLambdas :: Bool
   } deriving (Show, Eq)
 
 defOptions :: Options
 defOptions = Options
-  { variableLimit = Just 100
+  { hardVariableLimit = Just 100
+  , hardDisableLambdas = True
   }
 
 --

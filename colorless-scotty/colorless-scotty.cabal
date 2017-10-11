@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           colorless-scotty
-version:        0.0.1
+version:        0.0.2
 synopsis:       Scotty server add-on for Colorless
 description:    Scotty server add-on for Colorless
 category:       Web

@@ -343,26 +343,30 @@ evalDefine Define{var, expr} envRef = do
   expr' <- eval expr envRef
   env <- liftIO $ readIORef envRef
   ref <- liftIO $ newIORef expr'
-  limit <- variableLimit <$> getOptions
+  limit <- hardVariableLimit <$> getOptions
   addVarToEnv limit envRef var ref env
   return expr'
 
 evalLambda :: (MonadIO m, RuntimeThrower m) => Lambda m -> IORef (Env m) -> Eval m (Expr m)
 evalLambda Lambda{params, expr} envRef = do
-  return . Expr'Fn . Fn $ \vals -> do
-    let keys = map fst params
-    let args = zip keys vals
-    let keysLen = length keys
-    let argsLen = length args
-    if keysLen /= argsLen
-      then runtimeThrow $ if keysLen < argsLen
-        then RuntimeError'TooManyArguments
-        else RuntimeError'TooFewArguments
-      else do
-        args' <- liftIO $ mapM newIORef (Map.fromList args)
-        limit <- variableLimit <$> getOptions
-        envRef' <- addEnvToEnv limit args' envRef
-        eval expr envRef'
+  disabled <- hardDisableLambdas <$> getOptions
+  if disabled
+    then runtimeThrow $ RuntimeError'LambdaNotPermitted
+    else
+      return . Expr'Fn . Fn $ \vals -> do
+        let keys = map fst params
+        let args = zip keys vals
+        let keysLen = length keys
+        let argsLen = length args
+        if keysLen /= argsLen
+          then runtimeThrow $ if keysLen < argsLen
+            then RuntimeError'TooManyArguments
+            else RuntimeError'TooFewArguments
+          else do
+            args' <- liftIO $ mapM newIORef (Map.fromList args)
+            limit <- hardVariableLimit <$> getOptions
+            envRef' <- addEnvToEnv limit args' envRef
+            eval expr envRef'
 
 evalList :: (MonadIO m, RuntimeThrower m) => List m -> IORef (Env m)-> Eval m (Expr m)
 evalList List{list} envRef = do
