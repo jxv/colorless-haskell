@@ -7,10 +7,10 @@ module Colorless.Types
   , Pull(..)
   , pullAddress
   , RuntimeError(..)
-  , Options(..)
+  , Hooks(..)
   , Limits(..)
   , defLimits
-  , defOptions
+  , defHooks
   --
   , Symbol(..)
   , Type(..)
@@ -24,7 +24,7 @@ module Colorless.Types
 
 import qualified Data.HashMap.Lazy as HML
 import Control.Monad (mzero)
-import Data.Aeson hiding (Options)
+import Data.Aeson
 import Data.Text (Text)
 import Data.Text.Conversions (toText)
 import Data.String (IsString(..))
@@ -160,12 +160,16 @@ defLimits = Limits
   , exprLimit = Just 100
   }
 
-data Options = Options
-  { hardLimits :: Limits
-  } deriving (Show, Eq)
+data Hooks m meta meta' = Hooks
+  { metaMiddleware :: meta -> m meta'
+  , sandboxLimits :: meta' -> m Limits
+  }
 
-defOptions :: Options
-defOptions = Options { hardLimits = defLimits }
+defHooks :: Monad m => Hooks m meta meta
+defHooks = Hooks
+  { metaMiddleware = return
+  , sandboxLimits = \_ -> return defLimits
+  }
 
 --
 

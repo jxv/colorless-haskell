@@ -2,6 +2,6 @@ resolver: nightly-2017-05-17
 packages:
 - '.'
 extra-deps:
-- colorless-2.2.16
+- colorless-2.2.18
 flags: {}
 extra-package-dbs: []
