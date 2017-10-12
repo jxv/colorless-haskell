@@ -8,6 +8,8 @@ module Colorless.Types
   , pullAddress
   , RuntimeError(..)
   , Options(..)
+  , Limits(..)
+  , defLimits
   , defOptions
   --
   , Symbol(..)
@@ -143,20 +145,27 @@ instance FromJSON RuntimeError where
       _ -> mzero
   parseJSON _ = mzero
 
+data Limits = Limits
+  { variableLimit :: Maybe Int
+  , serviceCallLimit :: Maybe Int
+  , lambdaLimit :: Maybe Int
+  , exprLimit :: Maybe Int
+  } deriving (Show, Eq)
+
+defLimits :: Limits
+defLimits = Limits
+  { variableLimit = Just 50
+  , serviceCallLimit = Just 50
+  , lambdaLimit = Just 0
+  , exprLimit = Just 100
+  }
+
 data Options = Options
-  { hardVariableLimit :: Maybe Int
-  , hardServiceCallLimit :: Maybe Int
-  , hardLambdaLimit :: Maybe Int
-  , hardExprLimit :: Maybe Int
+  { hardLimits :: Limits
   } deriving (Show, Eq)
 
 defOptions :: Options
-defOptions = Options
-  { hardVariableLimit = Just 50
-  , hardServiceCallLimit = Just 50
-  , hardLambdaLimit = Just 0
-  , hardExprLimit = Just 100
-  }
+defOptions = Options { hardLimits = defLimits }
 
 --
 

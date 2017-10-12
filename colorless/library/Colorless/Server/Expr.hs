@@ -61,7 +61,7 @@ import Colorless.Prim
 import Colorless.RuntimeThrower
 
 data EvalConfig m = EvalConfig
-  { options :: Options
+  { limits :: Limits
   , langServiceCallCount :: IORef Int
   , langLambdaCount :: IORef Int
   , langExprCount :: IORef Int
@@ -77,12 +77,9 @@ newtype Eval m a = Eval (ReaderT (EvalConfig m) m a)
 instance RuntimeThrower m => RuntimeThrower (Eval m) where
   runtimeThrow err = Eval (lift $ runtimeThrow err)
 
-getOptions :: Monad m => Eval m Options
-getOptions = asks options
-
-tick :: (MonadIO m, RuntimeThrower m) => (Options -> Maybe Int) -> (EvalConfig m -> IORef Int) -> (Int -> RuntimeError) -> Eval m ()
-tick hardLimit langCount err = do
-  limit' <- hardLimit <$> getOptions
+tick :: (MonadIO m, RuntimeThrower m) => (Limits -> Maybe Int) -> (EvalConfig m -> IORef Int) -> (Int -> RuntimeError) -> Eval m ()
+tick getLimit langCount err = do
+  limit' <- getLimit <$> asks limits
   case limit' of
     Nothing -> return ()
     Just limit -> do
@@ -93,13 +90,13 @@ tick hardLimit langCount err = do
         else liftIO $ writeIORef ref (count + 1)
 
 tickServiceCall :: (MonadIO m, RuntimeThrower m) => Eval m ()
-tickServiceCall = tick hardServiceCallLimit langServiceCallCount RuntimeError'LangServiceCallLimit
+tickServiceCall = tick serviceCallLimit langServiceCallCount RuntimeError'LangServiceCallLimit
 
 tickLambda :: (MonadIO m, RuntimeThrower m) => Eval m ()
-tickLambda = tick hardLambdaLimit langLambdaCount RuntimeError'LangLambdaLimit
+tickLambda = tick lambdaLimit langLambdaCount RuntimeError'LangLambdaLimit
 
 tickExpr :: (MonadIO m, RuntimeThrower m) => Eval m ()
-tickExpr = tick hardExprLimit langExprCount RuntimeError'LangExprLimit
+tickExpr = tick exprLimit langExprCount RuntimeError'LangExprLimit
 
 type Env m = Map Symbol (IORef (Expr m))
 
@@ -372,7 +369,7 @@ evalDefine Define{var, expr} envRef = do
   expr' <- eval expr envRef
   env <- liftIO $ readIORef envRef
   ref <- liftIO $ newIORef expr'
-  limit <- hardVariableLimit <$> getOptions
+  limit <- variableLimit <$> asks limits
   addVarToEnv limit envRef var ref env
   return expr'
 
@@ -391,7 +388,7 @@ evalLambda Lambda{params, expr} envRef = do
         else RuntimeError'TooFewArguments
       else do
         args' <- liftIO $ mapM newIORef (Map.fromList args)
-        limit <- hardVariableLimit <$> getOptions
+        limit <- variableLimit <$> asks limits
         envRef' <- addEnvToEnv limit args' envRef
         eval expr envRef'
 
