@@ -66,9 +66,9 @@ data RuntimeError
   = RuntimeError'UnparsableFormat
   | RuntimeError'UnrecognizedCall
   | RuntimeError'VariableLimit
-  | RuntimeError'LangServiceCallLimit
-  | RuntimeError'LangLambdaLimit
-  | RuntimeError'LangExprLimit
+  | RuntimeError'LangServiceCallLimit Int
+  | RuntimeError'LangLambdaLimit Int
+  | RuntimeError'LangExprLimit Int
   | RuntimeError'UnknownVariable Text
   | RuntimeError'IncompatibleType
   | RuntimeError'TooFewArguments
@@ -92,9 +92,9 @@ instance ToJSON RuntimeError where
     RuntimeError'UnparsableFormat -> e "UnparsableFormat"
     RuntimeError'UnrecognizedCall -> object [ "tag" .= String "UnrecognizedCall" ]
     RuntimeError'VariableLimit -> e "VariableLimit"
-    RuntimeError'LangExprLimit -> e "LangExprLimit"
-    RuntimeError'LangLambdaLimit -> e "LangLambdaLimit"
-    RuntimeError'LangServiceCallLimit -> e "LangServiceCallLimit"
+    RuntimeError'LangExprLimit l -> object [ "tag" .= String "LangExprLimit", "limit" .= l ]
+    RuntimeError'LangLambdaLimit l -> object [ "tag" .= String "LangLambdaLimit", "limit" .= l ]
+    RuntimeError'LangServiceCallLimit l -> object [ "tag" .= String "LangServiceCallLimit", "limit" .= l ]
     RuntimeError'UnknownVariable m -> object [ "tag" .= String "UnknownVariable", "name" .= m ]
     RuntimeError'IncompatibleType -> e "IncompatibleType"
     RuntimeError'TooFewArguments -> e "TooFewArguments"
@@ -121,9 +121,9 @@ instance FromJSON RuntimeError where
       "UnparsableFormat" -> pure RuntimeError'UnparsableFormat
       "UnrecognizedCall" -> pure RuntimeError'UnrecognizedCall
       "VariableLimit" -> pure RuntimeError'VariableLimit
-      "LangExprLimit" -> pure RuntimeError'LangExprLimit
-      "LangLambdaLimit" -> pure RuntimeError'LangLambdaLimit
-      "LangServiceCallLimit" -> pure RuntimeError'LangServiceCallLimit
+      "LangExprLimit" -> RuntimeError'LangExprLimit <$> o .: "limit"
+      "LangLambdaLimit" -> RuntimeError'LangLambdaLimit <$> o .: "limit"
+      "LangServiceCallLimit" -> RuntimeError'LangServiceCallLimit <$> o .: "limit"
       "UnknownVariable" -> RuntimeError'UnknownVariable <$> o .: "name"
       "IncompatibleType" -> pure RuntimeError'IncompatibleType
       "TooFewArguments" -> pure RuntimeError'TooFewArguments

@@ -80,7 +80,7 @@ instance RuntimeThrower m => RuntimeThrower (Eval m) where
 getOptions :: Monad m => Eval m Options
 getOptions = asks options
 
-tick :: (MonadIO m, RuntimeThrower m) => (Options -> Maybe Int) -> (EvalConfig m -> IORef Int) -> RuntimeError -> Eval m ()
+tick :: (MonadIO m, RuntimeThrower m) => (Options -> Maybe Int) -> (EvalConfig m -> IORef Int) -> (Int -> RuntimeError) -> Eval m ()
 tick hardLimit langCount err = do
   limit' <- hardLimit <$> getOptions
   case limit' of
@@ -89,7 +89,7 @@ tick hardLimit langCount err = do
       ref <- asks langCount
       count <- liftIO $ readIORef ref
       if count == limit
-        then runtimeThrow err
+        then runtimeThrow (err count)
         else liftIO $ writeIORef ref (count + 1)
 
 tickServiceCall :: (MonadIO m, RuntimeThrower m) => Eval m ()
