@@ -66,6 +66,7 @@ data RuntimeError
   = RuntimeError'UnparsableFormat
   | RuntimeError'UnrecognizedCall
   | RuntimeError'VariableLimit
+  | RuntimeError'ServiceCallLimit
   | RuntimeError'UnknownVariable Text
   | RuntimeError'IncompatibleType
   | RuntimeError'TooFewArguments
@@ -90,6 +91,7 @@ instance ToJSON RuntimeError where
     RuntimeError'UnparsableFormat -> e "UnparsableFormat"
     RuntimeError'UnrecognizedCall -> object [ "tag" .= String "UnrecognizedCall" ]
     RuntimeError'VariableLimit -> e "VariableLimit"
+    RuntimeError'ServiceCallLimit -> e "VariableLimit"
     RuntimeError'UnknownVariable m -> object [ "tag" .= String "UnknownVariable", "name" .= m ]
     RuntimeError'IncompatibleType -> e "IncompatibleType"
     RuntimeError'TooFewArguments -> e "TooFewArguments"
@@ -117,6 +119,7 @@ instance FromJSON RuntimeError where
       "UnparsableFormat" -> pure RuntimeError'UnparsableFormat
       "UnrecognizedCall" -> pure RuntimeError'UnrecognizedCall
       "VariableLimit" -> pure RuntimeError'VariableLimit
+      "ServiceCallLimit" -> pure RuntimeError'ServiceCallLimit
       "UnknownVariable" -> RuntimeError'UnknownVariable <$> o .: "name"
       "IncompatibleType" -> pure RuntimeError'IncompatibleType
       "TooFewArguments" -> pure RuntimeError'TooFewArguments
@@ -140,12 +143,14 @@ instance FromJSON RuntimeError where
 data Options = Options
   { hardVariableLimit :: Maybe Int
   , hardDisableLambdas :: Bool
+  , hardServiceCallLimit :: Maybe Int
   } deriving (Show, Eq)
 
 defOptions :: Options
 defOptions = Options
   { hardVariableLimit = Just 100
   , hardDisableLambdas = True
+  , hardServiceCallLimit = Just 100
   }
 
 --

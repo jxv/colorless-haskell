@@ -62,6 +62,7 @@ import Colorless.RuntimeThrower
 
 data EvalConfig m = EvalConfig
   { options :: Options
+  , serviceCallCount :: IORef Int
   , apiCall :: ApiCall -> m Val
   }
 
@@ -76,6 +77,19 @@ instance RuntimeThrower m => RuntimeThrower (Eval m) where
 
 getOptions :: Monad m => Eval m Options
 getOptions = asks options
+
+tickServiceCall :: (MonadIO m, RuntimeThrower m) => Eval m ()
+tickServiceCall = do
+  limit' <- hardServiceCallLimit <$> getOptions
+  case limit' of
+    Nothing -> return ()
+    Just limit -> do
+      ref <- asks serviceCallCount
+      count <- liftIO $ readIORef ref
+      if count == limit
+        then runtimeThrow RuntimeError'ServiceCallLimit
+        else liftIO $ writeIORef ref (count + 1)
+
 
 type Env m = Map Symbol (IORef (Expr m))
 
@@ -401,11 +415,13 @@ evalFnCall FnCall{fn, args} envRef = do
     _ -> runtimeThrow RuntimeError'IncompatibleType
 
 evalApiUnCall :: (MonadIO m, RuntimeThrower m) => ApiUnCall m -> IORef (Env m) -> Eval m (Expr m)
-evalApiUnCall apiUnCall envRef = Expr'Val <$> case apiUnCall of
-  ApiUnCall'HollowUnCall c -> evalHollowUnCall c
-  ApiUnCall'WrapUnCall c -> evalWrapUnCall c envRef
-  ApiUnCall'StructUnCall c -> evalStructUnCall c envRef
-  ApiUnCall'EnumerationUnCall c -> evalEnumerationUnCall c envRef
+evalApiUnCall apiUnCall envRef = do
+  tickServiceCall
+  Expr'Val <$> case apiUnCall of
+    ApiUnCall'HollowUnCall c -> evalHollowUnCall c
+    ApiUnCall'WrapUnCall c -> evalWrapUnCall c envRef
+    ApiUnCall'StructUnCall c -> evalStructUnCall c envRef
+    ApiUnCall'EnumerationUnCall c -> evalEnumerationUnCall c envRef
 
 evalHollowUnCall :: (MonadIO m, RuntimeThrower m) => HollowUnCall -> Eval m Val
 evalHollowUnCall HollowUnCall{n} =
