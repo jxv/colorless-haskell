@@ -62,7 +62,9 @@ import Colorless.RuntimeThrower
 
 data EvalConfig m = EvalConfig
   { options :: Options
-  , serviceCallCount :: IORef Int
+  , langServiceCallCount :: IORef Int
+  , langLambdaCount :: IORef Int
+  , langExprCount :: IORef Int
   , apiCall :: ApiCall -> m Val
   }
 
@@ -78,18 +80,26 @@ instance RuntimeThrower m => RuntimeThrower (Eval m) where
 getOptions :: Monad m => Eval m Options
 getOptions = asks options
 
-tickServiceCall :: (MonadIO m, RuntimeThrower m) => Eval m ()
-tickServiceCall = do
-  limit' <- hardServiceCallLimit <$> getOptions
+tick :: (MonadIO m, RuntimeThrower m) => (Options -> Maybe Int) -> (EvalConfig m -> IORef Int) -> RuntimeError -> Eval m ()
+tick hardLimit langCount err = do
+  limit' <- hardLimit <$> getOptions
   case limit' of
     Nothing -> return ()
     Just limit -> do
-      ref <- asks serviceCallCount
+      ref <- asks langCount
       count <- liftIO $ readIORef ref
       if count == limit
-        then runtimeThrow RuntimeError'ServiceCallLimit
+        then runtimeThrow err
         else liftIO $ writeIORef ref (count + 1)
 
+tickServiceCall :: (MonadIO m, RuntimeThrower m) => Eval m ()
+tickServiceCall = tick hardServiceCallLimit langServiceCallCount RuntimeError'LangServiceCallLimit
+
+tickLambda :: (MonadIO m, RuntimeThrower m) => Eval m ()
+tickLambda = tick hardLambdaLimit langLambdaCount RuntimeError'LangLambdaLimit
+
+tickExpr :: (MonadIO m, RuntimeThrower m) => Eval m ()
+tickExpr = tick hardExprLimit langExprCount RuntimeError'LangExprLimit
 
 type Env m = Map Symbol (IORef (Expr m))
 
@@ -294,6 +304,7 @@ forceVal _ = runtimeThrow RuntimeError'IncompatibleType
 
 evalRef :: (MonadIO m, RuntimeThrower m) => Ref -> IORef (Env m) -> Eval m (Expr m)
 evalRef Ref{symbol} envRef = do
+  tickExpr
   env <- liftIO $ readIORef envRef
   varLookup env symbol
 
@@ -320,6 +331,7 @@ evalUnVal unVal envRef = case unVal of
 
 evalIf :: (MonadIO m, RuntimeThrower m) => If m -> IORef (Env m) -> Eval m (Expr m)
 evalIf If{cond, true, false} envRef = do
+  tickExpr
   envRef' <- liftIO $ newIORef =<< readIORef envRef
   v <- eval cond envRef'
   case v of
@@ -329,7 +341,9 @@ evalIf If{cond, true, false} envRef = do
     _ -> runtimeThrow RuntimeError'IncompatibleType
 
 evalGet :: (MonadIO m, RuntimeThrower m) => Get m -> IORef (Env m) -> Eval m (Expr m)
-evalGet Get{path,expr} envRef = getter path =<< eval expr envRef
+evalGet Get{path,expr} envRef = do
+  tickExpr
+  getter path =<< eval expr envRef
 
 getter :: (MonadIO m, RuntimeThrower m) => [Text] -> Expr m -> Eval m (Expr m)
 getter [] expr = return expr
@@ -354,6 +368,7 @@ getterApiVal _ _ = runtimeThrow RuntimeError'IncompatibleType
 
 evalDefine :: (MonadIO m, RuntimeThrower m) => Define m -> IORef (Env m) -> Eval m (Expr m)
 evalDefine Define{var, expr} envRef = do
+  tickExpr
   expr' <- eval expr envRef
   env <- liftIO $ readIORef envRef
   ref <- liftIO $ newIORef expr'
@@ -363,42 +378,45 @@ evalDefine Define{var, expr} envRef = do
 
 evalLambda :: (MonadIO m, RuntimeThrower m) => Lambda m -> IORef (Env m) -> Eval m (Expr m)
 evalLambda Lambda{params, expr} envRef = do
-  disabled <- hardDisableLambdas <$> getOptions
-  if disabled
-    then runtimeThrow $ RuntimeError'LambdaNotPermitted
-    else
-      return . Expr'Fn . Fn $ \vals -> do
-        let keys = map fst params
-        let args = zip keys vals
-        let keysLen = length keys
-        let argsLen = length args
-        if keysLen /= argsLen
-          then runtimeThrow $ if keysLen < argsLen
-            then RuntimeError'TooManyArguments
-            else RuntimeError'TooFewArguments
-          else do
-            args' <- liftIO $ mapM newIORef (Map.fromList args)
-            limit <- hardVariableLimit <$> getOptions
-            envRef' <- addEnvToEnv limit args' envRef
-            eval expr envRef'
+  tickLambda
+  tickExpr
+  return . Expr'Fn . Fn $ \vals -> do
+    let keys = map fst params
+    let args = zip keys vals
+    let keysLen = length keys
+    let argsLen = length args
+    if keysLen /= argsLen
+      then runtimeThrow $ if keysLen < argsLen
+        then RuntimeError'TooManyArguments
+        else RuntimeError'TooFewArguments
+      else do
+        args' <- liftIO $ mapM newIORef (Map.fromList args)
+        limit <- hardVariableLimit <$> getOptions
+        envRef' <- addEnvToEnv limit args' envRef
+        eval expr envRef'
 
 evalList :: (MonadIO m, RuntimeThrower m) => List m -> IORef (Env m)-> Eval m (Expr m)
 evalList List{list} envRef = do
+  tickExpr
   list' <- mapM (\item -> eval item envRef) list
   return . Expr'List $ List list'
 
 evalTuple :: (MonadIO m, RuntimeThrower m) => Tuple m -> IORef (Env m)-> Eval m (Expr m)
 evalTuple Tuple{tuple} envRef = do
+  tickExpr
   tuple' <- mapM (\item -> eval item envRef) tuple
   return . Expr'Tuple $ Tuple tuple'
 
 evalDo :: (MonadIO m, RuntimeThrower m) => Do m -> IORef (Env m) -> Eval m (Expr m)
-evalDo Do{exprs} envRef = case exprs of
-  [] -> return $ Expr'Val $ Val'Const $ Const'Null
-  _ -> last <$> mapM (\expr -> eval expr envRef) exprs
+evalDo Do{exprs} envRef = do
+  tickExpr
+  case exprs of
+    [] -> return $ Expr'Val $ Val'Const $ Const'Null
+    _ -> last <$> mapM (\expr -> eval expr envRef) exprs
 
 evalFnCall :: (MonadIO m, RuntimeThrower m) => FnCall m -> IORef (Env m) -> Eval m (Expr m)
 evalFnCall FnCall{fn, args} envRef = do
+  tickExpr
   val <- eval fn envRef
   case val of
     Expr'Fn (Fn fn') -> do
@@ -417,6 +435,7 @@ evalFnCall FnCall{fn, args} envRef = do
 evalApiUnCall :: (MonadIO m, RuntimeThrower m) => ApiUnCall m -> IORef (Env m) -> Eval m (Expr m)
 evalApiUnCall apiUnCall envRef = do
   tickServiceCall
+  tickExpr
   Expr'Val <$> case apiUnCall of
     ApiUnCall'HollowUnCall c -> evalHollowUnCall c
     ApiUnCall'WrapUnCall c -> evalWrapUnCall c envRef

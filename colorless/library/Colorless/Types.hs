@@ -66,7 +66,9 @@ data RuntimeError
   = RuntimeError'UnparsableFormat
   | RuntimeError'UnrecognizedCall
   | RuntimeError'VariableLimit
-  | RuntimeError'ServiceCallLimit
+  | RuntimeError'LangServiceCallLimit
+  | RuntimeError'LangLambdaLimit
+  | RuntimeError'LangExprLimit
   | RuntimeError'UnknownVariable Text
   | RuntimeError'IncompatibleType
   | RuntimeError'TooFewArguments
@@ -83,7 +85,6 @@ data RuntimeError
   | RuntimeError'UnparsableQuery
   | RuntimeError'NoImplementation
   | RuntimeError'NotMember
-  | RuntimeError'LambdaNotPermitted
   deriving (Show, Eq)
 
 instance ToJSON RuntimeError where
@@ -91,7 +92,9 @@ instance ToJSON RuntimeError where
     RuntimeError'UnparsableFormat -> e "UnparsableFormat"
     RuntimeError'UnrecognizedCall -> object [ "tag" .= String "UnrecognizedCall" ]
     RuntimeError'VariableLimit -> e "VariableLimit"
-    RuntimeError'ServiceCallLimit -> e "VariableLimit"
+    RuntimeError'LangExprLimit -> e "LangExprLimit"
+    RuntimeError'LangLambdaLimit -> e "LangLambdaLimit"
+    RuntimeError'LangServiceCallLimit -> e "LangServiceCallLimit"
     RuntimeError'UnknownVariable m -> object [ "tag" .= String "UnknownVariable", "name" .= m ]
     RuntimeError'IncompatibleType -> e "IncompatibleType"
     RuntimeError'TooFewArguments -> e "TooFewArguments"
@@ -108,7 +111,6 @@ instance ToJSON RuntimeError where
     RuntimeError'UnparsableQuery -> e "UnparsableQuery"
     RuntimeError'NoImplementation -> e "NoImplementation"
     RuntimeError'NotMember -> e "NotMember"
-    RuntimeError'LambdaNotPermitted -> e "LambdaNotPermitted"
     where
       e s = object [ "tag" .= String s ]
 
@@ -119,7 +121,9 @@ instance FromJSON RuntimeError where
       "UnparsableFormat" -> pure RuntimeError'UnparsableFormat
       "UnrecognizedCall" -> pure RuntimeError'UnrecognizedCall
       "VariableLimit" -> pure RuntimeError'VariableLimit
-      "ServiceCallLimit" -> pure RuntimeError'ServiceCallLimit
+      "LangExprLimit" -> pure RuntimeError'LangExprLimit
+      "LangLambdaLimit" -> pure RuntimeError'LangLambdaLimit
+      "LangServiceCallLimit" -> pure RuntimeError'LangServiceCallLimit
       "UnknownVariable" -> RuntimeError'UnknownVariable <$> o .: "name"
       "IncompatibleType" -> pure RuntimeError'IncompatibleType
       "TooFewArguments" -> pure RuntimeError'TooFewArguments
@@ -136,21 +140,22 @@ instance FromJSON RuntimeError where
       "UnparsableQuery" -> pure RuntimeError'UnparsableQuery
       "NoImplementation" -> pure RuntimeError'NoImplementation
       "NotMember" -> pure RuntimeError'NotMember
-      "LambdaNotPermitted" -> pure RuntimeError'LambdaNotPermitted
       _ -> mzero
   parseJSON _ = mzero
 
 data Options = Options
   { hardVariableLimit :: Maybe Int
-  , hardDisableLambdas :: Bool
   , hardServiceCallLimit :: Maybe Int
+  , hardLambdaLimit :: Maybe Int
+  , hardExprLimit :: Maybe Int
   } deriving (Show, Eq)
 
 defOptions :: Options
 defOptions = Options
-  { hardVariableLimit = Just 100
-  , hardDisableLambdas = True
-  , hardServiceCallLimit = Just 100
+  { hardVariableLimit = Just 50
+  , hardServiceCallLimit = Just 50
+  , hardLambdaLimit = Just 0
+  , hardExprLimit = Just 100
   }
 
 --
