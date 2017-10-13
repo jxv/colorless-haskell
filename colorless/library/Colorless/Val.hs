@@ -149,10 +149,10 @@ instance ToVal Word64 where
   toVal u = Val'Prim $ Prim'U64 u
 
 instance ToVal Float where
-    toVal f = Val'Const $ Const'Number $ fromFloatDigits f
+    toVal f = Val'Prim $ Prim'F32 f
 
 instance ToVal Double where
-    toVal d = Val'Const $ Const'Number $ fromFloatDigits d
+    toVal d = Val'Prim $ Prim'F64 d
 
 instance ToVal a => ToVal (Maybe a) where
   toVal Nothing = Val'Const Const'Null
@@ -365,10 +365,12 @@ instance FromVal Word64 where
 
 instance FromVal Float where
   fromVal (Val'Const (Const'Number n)) = Just $ toRealFloat n
+  fromVal (Val'Prim (Prim'F32 f)) = Just f
   fromVal _ = Nothing
 
 instance FromVal Double where
   fromVal (Val'Const (Const'Number n)) = Just $ toRealFloat n
+  fromVal (Val'Prim (Prim'F64 f)) = Just f
   fromVal _ = Nothing
 
 instance FromVal a => FromVal (Maybe a) where

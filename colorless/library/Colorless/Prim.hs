@@ -17,6 +17,8 @@ data Prim
   | Prim'U16 Word16
   | Prim'U32 Word32
   | Prim'U64 Word64
+  | Prim'F32 Float
+  | Prim'F64 Double
   | Prim'String Text
   deriving (Show, Eq)
 
@@ -31,4 +33,6 @@ instance ToJSON Prim where
     Prim'U16 u -> toJSON u
     Prim'U32 u -> toJSON u
     Prim'U64 u -> toJSON u
+    Prim'F32 f -> toJSON f
+    Prim'F64 f -> toJSON f
     Prim'String s -> toJSON s

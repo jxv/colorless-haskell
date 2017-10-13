@@ -50,7 +50,7 @@ import Data.Word
 import Data.Aeson (parseJSON, Value)
 import Data.Aeson.Types (parseMaybe)
 import Data.IORef (IORef, readIORef, newIORef, writeIORef)
-import Data.Scientific (toBoundedInteger, Scientific)
+import Data.Scientific (toBoundedInteger, toBoundedRealFloat, Scientific)
 import Data.Text (Text)
 
 import qualified Colorless.Ast as Ast
@@ -473,21 +473,298 @@ emptyEnv = do
   eq <- newIORef eqExpr
   neq <- newIORef neqExpr
   concat' <- newIORef concatExpr
+
   add <- newIORef addExpr
+  addI8 <- newIORef $ i8Expr (+)
+  addI16 <- newIORef $ i16Expr (+)
+  addI32 <- newIORef $ i32Expr (+)
+  addI64 <- newIORef $ i64Expr (+)
+  addU8 <- newIORef $ u8Expr (+)
+  addU16 <- newIORef $ u16Expr (+)
+  addU32 <- newIORef $ u32Expr (+)
+  addU64 <- newIORef $ u64Expr (+)
+  addF32 <- newIORef $ f32Expr (+)
+  addF64 <- newIORef $ f64Expr (+)
+
   sub <- newIORef subExpr
+  subI8 <- newIORef $ i8Expr (-)
+  subI16 <- newIORef $ i16Expr (-)
+  subI32 <- newIORef $ i32Expr (-)
+  subI64 <- newIORef $ i64Expr (-)
+  subU8 <- newIORef $ u8Expr (-)
+  subU16 <- newIORef $ u16Expr (-)
+  subU32 <- newIORef $ u32Expr (-)
+  subU64 <- newIORef $ u64Expr (-)
+  subF32 <- newIORef $ f32Expr (-)
+  subF64 <- newIORef $ f64Expr (-)
+
   mul <- newIORef mulExpr
+  mulI8 <- newIORef $ i8Expr (*)
+  mulI16 <- newIORef $ i16Expr (*)
+  mulI32 <- newIORef $ i32Expr (*)
+  mulI64 <- newIORef $ i64Expr (*)
+  mulU8 <- newIORef $ u8Expr (*)
+  mulU16 <- newIORef $ u16Expr (*)
+  mulU32 <- newIORef $ u32Expr (*)
+  mulU64 <- newIORef $ u64Expr (*)
+  mulF32 <- newIORef $ f32Expr (*)
+  mulF64 <- newIORef $ f64Expr (*)
+
   div' <- newIORef divExpr
+  divI8 <- newIORef $ i8Expr (div)
+  divI16 <- newIORef $ i16Expr (div)
+  divI32 <- newIORef $ i32Expr (div)
+  divI64 <- newIORef $ i64Expr (div)
+  divU8 <- newIORef $ u8Expr (div)
+  divU16 <- newIORef $ u16Expr (div)
+  divU32 <- newIORef $ u32Expr (div)
+  divU64 <- newIORef $ u64Expr (div)
+  divF32 <- newIORef $ f32Expr (/)
+  divF64 <- newIORef $ f64Expr (/)
+ 
   tuple <- newIORef tupleExpr
   newIORef $ Map.fromList
     [ ("==", eq)
-    , ("!=", neq)
+    , ("eq", eq)
+    , ("!=", eq)
+    , ("neq", neq)
+    , ("neq", neq)
+
     , ("+", add)
+    , ("addI8", addI8)
+    , ("addI16", addI16)
+    , ("addI32", addI32)
+    , ("addI64", addI64)
+    , ("addU8", addU8)
+    , ("addU16", addU16)
+    , ("addU32", addU32)
+    , ("addU64", addU64)
+    , ("addF32", addF32)
+    , ("addF64", addF64)
+
     , ("-", sub)
+    , ("subI8", subI8)
+    , ("subI16", subI16)
+    , ("subI32", subI32)
+    , ("subI64", subI64)
+    , ("subU8", subU8)
+    , ("subU16", subU16)
+    , ("subU32", subU32)
+    , ("subU64", subU64)
+    , ("subF32", subF32)
+    , ("subF64", subF64)
+
     , ("*", mul)
+    , ("mulI8", mulI8)
+    , ("mulI16", mulI16)
+    , ("mulI32", mulI32)
+    , ("mulI64", mulI64)
+    , ("mulU8", mulU8)
+    , ("mulU16", mulU16)
+    , ("mulU32", mulU32)
+    , ("mulU64", mulU64)
+    , ("mulF32", mulF32)
+    , ("mulF64", mulF64)
+
     , ("/", div')
+    , ("divI8", divI8)
+    , ("divI16", divI16)
+    , ("divI32", divI32)
+    , ("divI64", divI64)
+    , ("divU8", divU8)
+    , ("divU16", divU16)
+    , ("divU32", divU32)
+    , ("divU64", divU64)
+    , ("divF32", divF32)
+    , ("divF64", divF64)
+
     , ("concat", concat')
     , ("tuple", tuple)
     ]
+
+i8Expr :: RuntimeThrower m => (Int8 -> Int8 -> Int8) -> Expr m
+i8Expr op = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Prim (Prim'I8 y))] -> toExpr $ x `op` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I8 y))] -> case toBoundedInteger x of
+      Just x' -> toExpr $ x' `op` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> toExpr $ x `op` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+      (Just x', Just y') -> toExpr $ x' `op` y'
+      _ -> runtimeThrow RuntimeError'IncompatibleType
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+    where
+      toExpr v = return $ Expr'Val (toVal v)
+
+i16Expr :: RuntimeThrower m => (Int16 -> Int16 -> Int16) -> Expr m
+i16Expr op = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Val (Val'Prim (Prim'I16 x)), Expr'Val (Val'Prim (Prim'I16 y))] -> toExpr $ x `op` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I16 y))] -> case toBoundedInteger x of
+      Just x' -> toExpr $ x' `op` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'I16 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> toExpr $ x `op` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+      (Just x', Just y') -> toExpr $ x' `op` y'
+      _ -> runtimeThrow RuntimeError'IncompatibleType
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+    where
+      toExpr v = return $ Expr'Val (toVal v)
+
+i32Expr :: RuntimeThrower m => (Int32 -> Int32 -> Int32) -> Expr m
+i32Expr op = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Val (Val'Prim (Prim'I32 x)), Expr'Val (Val'Prim (Prim'I32 y))] -> toExpr $ x `op` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I32 y))] -> case toBoundedInteger x of
+      Just x' -> toExpr $ x' `op` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'I32 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> toExpr $ x `op` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+      (Just x', Just y') -> toExpr $ x' `op` y'
+      _ -> runtimeThrow RuntimeError'IncompatibleType
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+    where
+      toExpr v = return $ Expr'Val (toVal v)
+
+i64Expr :: RuntimeThrower m => (Int64 -> Int64 -> Int64) -> Expr m
+i64Expr op = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Prim (Prim'I64 y))] -> toExpr $ x `op` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I64 y))] -> case toBoundedInteger x of
+      Just x' -> toExpr $ x' `op` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> toExpr $ x `op` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+      (Just x', Just y') -> toExpr $ x' `op` y'
+      _ -> runtimeThrow RuntimeError'IncompatibleType
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+    where
+      toExpr v = return $ Expr'Val (toVal v)
+
+u8Expr :: RuntimeThrower m => (Word8 -> Word8 -> Word8) -> Expr m
+u8Expr op = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Prim (Prim'U8 y))] -> toExpr $ x `op` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U8 y))] -> case toBoundedInteger x of
+      Just x' -> toExpr $ x' `op` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> toExpr $ x `op` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+      (Just x', Just y') -> toExpr $ x' `op` y'
+      _ -> runtimeThrow RuntimeError'IncompatibleType
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+    where
+      toExpr v = return $ Expr'Val (toVal v)
+
+u16Expr :: RuntimeThrower m => (Word16 -> Word16 -> Word16) -> Expr m
+u16Expr op = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Prim (Prim'U16 y))] -> toExpr $ x `op` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U16 y))] -> case toBoundedInteger x of
+      Just x' -> toExpr $ x' `op` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> toExpr $ x `op` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+      (Just x', Just y') -> toExpr $ x' `op` y'
+      _ -> runtimeThrow RuntimeError'IncompatibleType
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+    where
+      toExpr v = return $ Expr'Val (toVal v)
+
+u32Expr :: RuntimeThrower m => (Word32 -> Word32 -> Word32) -> Expr m
+u32Expr op = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Prim (Prim'U32 y))] -> toExpr $ x `op` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U32 y))] -> case toBoundedInteger x of
+      Just x' -> toExpr $ x' `op` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> toExpr $ x `op` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+      (Just x', Just y') -> toExpr $ x' `op` y'
+      _ -> runtimeThrow RuntimeError'IncompatibleType
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+    where
+      toExpr v = return $ Expr'Val (toVal v)
+
+u64Expr :: RuntimeThrower m => (Word64 -> Word64 -> Word64) -> Expr m
+u64Expr op = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Prim (Prim'U64 y))] -> toExpr $ x `op` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U64 y))] -> case toBoundedInteger x of
+      Just x' -> toExpr $ x' `op` y
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+      Just y' -> toExpr $ x `op` y'
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+      (Just x', Just y') -> toExpr $ x' `op` y'
+      _ -> runtimeThrow RuntimeError'IncompatibleType
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+    where
+      toExpr v = return $ Expr'Val (toVal v)
+
+f32Expr :: RuntimeThrower m => (Float -> Float -> Float) -> Expr m
+f32Expr op = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Val (Val'Prim (Prim'F32 x)), Expr'Val (Val'Prim (Prim'F32 y))] -> toExpr $ x `op` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'F32 y))] -> case toBoundedRealFloat x of
+      x' -> toExpr $ eitherCollapse x' `op` y
+    [Expr'Val (Val'Prim (Prim'F32 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedRealFloat y of
+      y' -> toExpr $ x `op` eitherCollapse y'
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedRealFloat x, toBoundedRealFloat y) of
+      (x', y') -> toExpr $ eitherCollapse x' `op` eitherCollapse y'
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+    where
+      toExpr v = return $ Expr'Val (toVal v)
+
+f64Expr :: RuntimeThrower m => (Double -> Double -> Double) -> Expr m
+f64Expr op = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Val (Val'Prim (Prim'F64 x)), Expr'Val (Val'Prim (Prim'F64 y))] -> toExpr $ x `op` y
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'F64 y))] -> case toBoundedRealFloat x of
+      x' -> toExpr $ eitherCollapse x' `op` y
+    [Expr'Val (Val'Prim (Prim'F64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedRealFloat y of
+      y' -> toExpr $ x `op` eitherCollapse y'
+    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedRealFloat x, toBoundedRealFloat y) of
+      (x', y') -> toExpr $ eitherCollapse x' `op` eitherCollapse y'
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+    where
+      toExpr v = return $ Expr'Val (toVal v)
 
 numExpr :: RuntimeThrower m
   => (Scientific -> Scientific -> Scientific)
@@ -696,6 +973,9 @@ tupleExpr = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     xs -> return $ Expr'Tuple $ Tuple xs
+
+eitherCollapse :: Either a a -> a
+eitherCollapse = either id id
 
 --
 
