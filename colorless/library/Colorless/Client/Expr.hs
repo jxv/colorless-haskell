@@ -77,6 +77,7 @@ module Colorless.Client.Expr
   --
   , mapList
   , filterList
+  , reduceList
   --
   , tuple2
   , tuple3
@@ -1219,6 +1220,9 @@ mapList = Expr (Ast'Ref $ Ast.Ref "mapList")
 
 filterList :: Expr (Fn ((Expr (Fn (Expr a -> Bool)), Expr [a]) -> [a]))
 filterList = Expr (Ast'Ref $ Ast.Ref "filterList")
+
+reduceList :: Expr (Fn ((Expr (Fn ((Expr b, Expr a) -> b)), Expr b, Expr [a]) -> b))
+reduceList = Expr (Ast'Ref $ Ast.Ref "reduceList")
 
 instance (HasType t1, HasType t2) => HasType (Fn (Expr t1 -> t2)) where
   getType f = (getType (p1 f)) { o = Just $ (getType (p2 f)) }

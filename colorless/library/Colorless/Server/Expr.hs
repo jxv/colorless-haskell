@@ -45,6 +45,7 @@ import Control.Monad (when, join, filterM)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks, lift)
 import Data.Map (Map)
+import Data.Foldable (foldlM)
 import Data.Int
 import Data.Word
 import Data.Aeson (parseJSON, Value)
@@ -522,6 +523,7 @@ emptyEnv = do
 
   mapList <- newIORef mapListExpr
   filterList <- newIORef filterListExpr
+  reduceList <- newIORef reduceListExpr
 
   newIORef $ Map.fromList
     [ ("eq", eq)
@@ -576,6 +578,7 @@ emptyEnv = do
 
     , ("mapList", mapList)
     , ("filterList", filterList)
+    , ("reduceList", reduceList)
 
     ]
 
@@ -600,6 +603,14 @@ filterListExpr = Expr'Fn . Fn $ \args ->
           Expr'Val (Val'Const (Const'Bool b)) -> return b
           _ -> runtimeThrow RuntimeError'IncompatibleType) -- Bool
       list
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+
+reduceListExpr :: RuntimeThrower m => Expr m
+reduceListExpr = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Fn (Fn f), a, Expr'List (List list)] -> foldlM (\x y -> f [x, y]) a list
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooManyArguments
 
