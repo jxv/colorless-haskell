@@ -76,6 +76,7 @@ module Colorless.Client.Expr
   , eitheR
   --
   , mapList
+  , filterList
   --
   , tuple2
   , tuple3
@@ -1215,6 +1216,9 @@ f -< x = call f x
 
 mapList :: Expr (Fn ((Expr (Fn (Expr a -> b)), Expr [a]) -> [b]))
 mapList = Expr (Ast'Ref $ Ast.Ref "mapList")
+
+filterList :: Expr (Fn ((Expr (Fn (Expr a -> Bool)), Expr [a]) -> [a]))
+filterList = Expr (Ast'Ref $ Ast.Ref "filterList")
 
 instance (HasType t1, HasType t2) => HasType (Fn (Expr t1 -> t2)) where
   getType f = (getType (p1 f)) { o = Just $ (getType (p2 f)) }

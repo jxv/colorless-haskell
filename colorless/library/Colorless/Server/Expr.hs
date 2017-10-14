@@ -41,7 +41,7 @@ module Colorless.Server.Expr
   ) where
 
 import qualified Data.Map as Map
-import Control.Monad (when, join)
+import Control.Monad (when, join, filterM)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks, lift)
 import Data.Map (Map)
@@ -521,6 +521,7 @@ emptyEnv = do
   tuple <- newIORef tupleExpr
 
   mapList <- newIORef mapListExpr
+  filterList <- newIORef filterListExpr
 
   newIORef $ Map.fromList
     [ ("eq", eq)
@@ -574,6 +575,7 @@ emptyEnv = do
     , ("tuple", tuple)
 
     , ("mapList", mapList)
+    , ("filterList", filterList)
 
     ]
 
@@ -582,6 +584,22 @@ mapListExpr = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Fn (Fn f), Expr'List (List list)] -> Expr'List . List <$> mapM (f . (:[])) list
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+
+filterListExpr :: RuntimeThrower m => Expr m
+filterListExpr = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Fn (Fn f), Expr'List (List list)] -> Expr'List . List <$>
+      filterM
+      (\x -> do
+        res <- f [x]
+        case res of
+          Expr'Val (Val'Prim (Prim'Bool b)) -> return b
+          Expr'Val (Val'Const (Const'Bool b)) -> return b
+          _ -> runtimeThrow RuntimeError'IncompatibleType) -- Bool
+      list
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooManyArguments
 
@@ -867,10 +885,14 @@ concatExpr :: RuntimeThrower m => Expr m
 concatExpr = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
-    [x, y] -> case (x,y) of
-      (Expr'Val (Val'Const (Const'String x')), Expr'Val (Val'Const (Const'String y'))) -> return $
-        Expr'Val . Val'Const . Const'String $ x' `mappend` y'
-      _ -> runtimeThrow RuntimeError'IncompatibleType
+    [x, y] -> do
+      (u,v) <- case (x,y) of
+        (Expr'Val (Val'Const (Const'String x')), Expr'Val (Val'Const (Const'String y'))) -> return (x',y')
+        (Expr'Val (Val'Prim (Prim'String x')), Expr'Val (Val'Prim (Prim'String y'))) -> return (x',y')
+        (Expr'Val (Val'Const (Const'String x')), Expr'Val (Val'Prim (Prim'String y'))) -> return (x',y')
+        (Expr'Val (Val'Prim (Prim'String x')), Expr'Val (Val'Const (Const'String y'))) -> return (x',y')
+        _ -> runtimeThrow RuntimeError'IncompatibleType -- String
+      return $ Expr'Val . Val'Const . Const'String $ u `mappend` v
     _ -> runtimeThrow RuntimeError'TooManyArguments
 
 tupleExpr :: RuntimeThrower m => Expr m
