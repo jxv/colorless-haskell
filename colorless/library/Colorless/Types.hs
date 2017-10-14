@@ -156,7 +156,7 @@ defLimits :: Limits
 defLimits = Limits
   { variableLimit = Just 50
   , serviceCallLimit = Just 50
-  , lambdaLimit = Just 0
+  , lambdaLimit = Just 10
   , exprLimit = Just 100
   }
 
@@ -179,26 +179,33 @@ newtype Symbol = Symbol Text
 data Type = Type
   { n :: TypeName
   , p :: [Type]
+  , o :: Maybe Type
   } deriving (Show, Eq)
 
 instance IsString Type where
-  fromString s = Type (fromString s) []
+  fromString s = Type (fromString s) [] Nothing
 
 instance FromJSON Type where
   parseJSON = \case
-    String s -> pure $ Type (TypeName s) []
+    String s -> pure $ Type (TypeName s) [] Nothing
     Object o -> do
       n <- o .: "n"
-      case HML.lookup "p" o of
-        Nothing -> pure $ Type n []
-        Just (String p) -> pure $ Type n [Type (TypeName p) []]
-        Just p -> Type n <$> (parseJSON p)
+      case (HML.lookup "p" o, HML.lookup "o" o) of
+        (Nothing, Nothing) -> pure $ Type n [] Nothing
+        (Just (String p), Nothing) -> pure $ Type n [Type (TypeName p) [] Nothing] Nothing
+        (Just p, Nothing) -> Type n <$> (parseJSON p) <*> pure Nothing
+        (Just (String p), Just output) -> Type n [Type (TypeName p) [] Nothing] <$> (Just <$> parseJSON output)
+        (Just p, Just output) -> Type n <$> (parseJSON p) <*> (Just <$> parseJSON output)
+        _ -> mzero
     _ -> mzero
 
 instance ToJSON Type where
-  toJSON (Type n []) = toJSON n
-  toJSON (Type n [p]) = object [ "n" .= n, "p" .= toJSON p ]
-  toJSON (Type n ps) = object [ "n" .= n, "p" .= map toJSON ps ]
+  toJSON (Type n [] Nothing) = toJSON n
+  toJSON (Type n [] (Just o)) = object [ "n" .= n, "o" .= toJSON o ]
+  toJSON (Type n [p] Nothing) = object [ "n" .= n, "p" .= toJSON p ]
+  toJSON (Type n [p] (Just o)) = object [ "n" .= n, "p" .= toJSON p, "o" .= toJSON o]
+  toJSON (Type n ps Nothing) = object [ "n" .= n, "p" .= map toJSON ps ]
+  toJSON (Type n ps (Just o)) = object [ "n" .= n, "p" .= map toJSON ps, "o" .= toJSON o ]
 
 newtype TypeName = TypeName Text
   deriving (Show, Eq, Ord, FromJSON, ToJSON, IsString)
@@ -274,19 +281,19 @@ instance HasType Double where
   getType _ = "F64"
 
 instance HasType a => HasType (Maybe a) where
-  getType x = Type "Option" [getType (p x)]
+  getType x = Type "Option" [getType (p x)] Nothing
     where
       p :: Proxy (Maybe a) -> Proxy a
       p _ = Proxy
 
 instance HasType a => HasType [a] where
-  getType x = Type "List" [getType (p x)]
+  getType x = Type "List" [getType (p x)] Nothing
     where
       p :: Proxy [a] -> Proxy a
       p _ = Proxy
 
 instance (HasType e, HasType a) => HasType (Either e a) where
-  getType x = Type "Either" [getType (p1 x), getType (p2 x)]
+  getType x = Type "Either" [getType (p1 x), getType (p2 x)] Nothing
     where
       p1 :: Proxy (Either e a) -> Proxy e
       p1 _ = Proxy
@@ -296,7 +303,7 @@ instance (HasType e, HasType a) => HasType (Either e a) where
 --
 
 instance (HasType t1, HasType t2) => HasType (t1, t2) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x)] Nothing
      where
        p1 :: Proxy (t1, t2) -> Proxy t1
        p1 _ = Proxy
@@ -304,7 +311,7 @@ instance (HasType t1, HasType t2) => HasType (t1, t2) where
        p2 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3) => HasType (t1, t2, t3) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3) -> Proxy t1
        p1 _ = Proxy
@@ -314,7 +321,7 @@ instance (HasType t1, HasType t2, HasType t3) => HasType (t1, t2, t3) where
        p3 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4) => HasType (t1, t2, t3, t4) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4) -> Proxy t1
        p1 _ = Proxy
@@ -326,7 +333,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4) => HasType (t1, t2, t3
        p4 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5) => HasType (t1, t2, t3, t4, t5) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5) -> Proxy t1
        p1 _ = Proxy
@@ -340,7 +347,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5) => HasType
        p5 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6) => HasType (t1, t2, t3, t4, t5, t6) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6) -> Proxy t1
        p1 _ = Proxy
@@ -356,7 +363,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p6 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7) => HasType (t1, t2, t3, t4, t5, t6, t7) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7) -> Proxy t1
        p1 _ = Proxy
@@ -374,7 +381,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p7 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8) => HasType (t1, t2, t3, t4, t5, t6, t7, t8) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8) -> Proxy t1
        p1 _ = Proxy
@@ -394,7 +401,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p8 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9) -> Proxy t1
        p1 _ = Proxy
@@ -416,7 +423,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p9 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10) -> Proxy t1
        p1 _ = Proxy
@@ -440,7 +447,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p10 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11) -> Proxy t1
        p1 _ = Proxy
@@ -466,7 +473,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p11 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12) -> Proxy t1
        p1 _ = Proxy
@@ -494,7 +501,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p12 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13) -> Proxy t1
        p1 _ = Proxy
@@ -524,7 +531,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p13 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14) -> Proxy t1
        p1 _ = Proxy
@@ -556,7 +563,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p14 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15) -> Proxy t1
        p1 _ = Proxy
@@ -590,7 +597,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p15 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16) -> Proxy t1
        p1 _ = Proxy
@@ -626,7 +633,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p16 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17) -> Proxy t1
        p1 _ = Proxy
@@ -664,7 +671,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p17 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18) -> Proxy t1
        p1 _ = Proxy
@@ -704,7 +711,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p18 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19) -> Proxy t1
        p1 _ = Proxy
@@ -746,7 +753,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p19 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20) -> Proxy t1
        p1 _ = Proxy
@@ -790,7 +797,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p20 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21) -> Proxy t1
        p1 _ = Proxy
@@ -836,7 +843,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p21 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22) -> Proxy t1
        p1 _ = Proxy
@@ -884,7 +891,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p22 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23) -> Proxy t1
        p1 _ = Proxy
@@ -934,7 +941,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p23 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24) -> Proxy t1
        p1 _ = Proxy
@@ -986,7 +993,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p24 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25) -> Proxy t1
        p1 _ = Proxy
@@ -1040,7 +1047,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p25 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26) -> Proxy t1
        p1 _ = Proxy
@@ -1096,7 +1103,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p26 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27) -> Proxy t1
        p1 _ = Proxy
@@ -1154,7 +1161,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p27 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x), getType (p28 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x), getType (p28 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28) -> Proxy t1
        p1 _ = Proxy
@@ -1214,7 +1221,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p28 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x), getType (p28 x), getType (p29 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x), getType (p28 x), getType (p29 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29) -> Proxy t1
        p1 _ = Proxy
@@ -1276,7 +1283,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p29 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x), getType (p28 x), getType (p29 x), getType (p30 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x), getType (p28 x), getType (p29 x), getType (p30 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30) -> Proxy t1
        p1 _ = Proxy
@@ -1340,7 +1347,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p30 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30, HasType t31) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x), getType (p28 x), getType (p29 x), getType (p30 x), getType (p31 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x), getType (p28 x), getType (p29 x), getType (p30 x), getType (p31 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31) -> Proxy t1
        p1 _ = Proxy
@@ -1406,7 +1413,7 @@ instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6
        p31 _ = Proxy
 
 instance (HasType t1, HasType t2, HasType t3, HasType t4, HasType t5, HasType t6, HasType t7, HasType t8, HasType t9, HasType t10, HasType t11, HasType t12, HasType t13, HasType t14, HasType t15, HasType t16, HasType t17, HasType t18, HasType t19, HasType t20, HasType t21, HasType t22, HasType t23, HasType t24, HasType t25, HasType t26, HasType t27, HasType t28, HasType t29, HasType t30, HasType t31, HasType t32) => HasType (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32) where
-  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x), getType (p28 x), getType (p29 x), getType (p30 x), getType (p31 x), getType (p32 x)]
+  getType x = Type "Tuple" [getType (p1 x), getType (p2 x), getType (p3 x), getType (p4 x), getType (p5 x), getType (p6 x), getType (p7 x), getType (p8 x), getType (p9 x), getType (p10 x), getType (p11 x), getType (p12 x), getType (p13 x), getType (p14 x), getType (p15 x), getType (p16 x), getType (p17 x), getType (p18 x), getType (p19 x), getType (p20 x), getType (p21 x), getType (p22 x), getType (p23 x), getType (p24 x), getType (p25 x), getType (p26 x), getType (p27 x), getType (p28 x), getType (p29 x), getType (p30 x), getType (p31 x), getType (p32 x)] Nothing
      where
        p1 :: Proxy (t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32) -> Proxy t1
        p1 _ = Proxy
@@ -1498,7 +1505,7 @@ var hasTypeTuple = n => {
   for (var i = 1; i < n; i++) {
     l = l.concat([', getType (p', i + 1, ' x)']);
   }
-  l = l.concat([']\n']);
+  l = l.concat(['] Nothing\n']);
 
 
   l = l.concat(['     where\n']);

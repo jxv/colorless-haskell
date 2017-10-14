@@ -75,6 +75,8 @@ module Colorless.Client.Expr
   , list
   , eitheR
   --
+  , mapList
+  --
   , tuple2
   , tuple3
   , tuple4
@@ -279,7 +281,7 @@ instance Monad Stmt where
     y = f (ret x)
     in Stmt (stmts x ++ stmts y) (ret y)
 
-def :: HasType a => Symbol -> Expr a -> Stmt (Expr a)
+def :: (HasType a) => Symbol -> Expr a -> Stmt (Expr a)
 def symbol expr = Stmt
   { stmts = [Ast'Define $ Ast.Define symbol (toAst expr)]
   , ret = unsafeRef symbol
@@ -1210,6 +1212,27 @@ call (Expr'MembersCtor _ _) _ = error "Unevalated member contructor expression c
 
 (-<) :: ToArgs args => Expr (Fn (args -> a)) -> args -> Expr a
 f -< x = call f x
+
+mapList :: Expr (Fn ((Expr (Fn (Expr a -> b)), Expr [a]) -> [b]))
+mapList = Expr (Ast'Ref $ Ast.Ref "mapList")
+
+instance (HasType t1, HasType t2) => HasType (Fn (Expr t1 -> t2)) where
+  getType f = (getType (p1 f)) { o = Just $ (getType (p2 f)) }
+    where
+      p1 :: Proxy (Fn (Expr t1 -> t2)) -> Proxy t1
+      p1 _ = Proxy
+      p2 :: Proxy (Fn (Expr t1 -> t2)) -> Proxy t2
+      p2 _ = Proxy
+
+instance (HasType t1, HasType t2, HasType t3) => HasType (Fn ((Expr t1, Expr t2) -> t3)) where
+  getType f = (getType (p1 f)) { o = Just $ (getType (p2 f)) { o = Just $ (getType (p3 f)) } }
+    where
+      p1 :: Proxy (Fn ((Expr t1, Expr t2) -> t3)) -> Proxy t1
+      p1 _ = Proxy
+      p2 :: Proxy (Fn ((Expr t1, Expr t2) -> t3)) -> Proxy t2
+      p2 _ = Proxy
+      p3 :: Proxy (Fn ((Expr t1, Expr t2) -> t3)) -> Proxy t3
+      p3 _ = Proxy
 
 fn0
   :: (HasType a, ToAst a)

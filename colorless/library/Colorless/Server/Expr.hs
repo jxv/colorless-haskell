@@ -519,6 +519,9 @@ emptyEnv = do
   divF64 <- newIORef $ f64Expr (/)
 
   tuple <- newIORef tupleExpr
+
+  mapList <- newIORef mapListExpr
+
   newIORef $ Map.fromList
     [ ("eq", eq)
     , ("neq", neq)
@@ -570,7 +573,17 @@ emptyEnv = do
     , ("concat", concat')
     , ("tuple", tuple)
 
+    , ("mapList", mapList)
+
     ]
+
+mapListExpr :: RuntimeThrower m => Expr m
+mapListExpr = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Fn (Fn f), Expr'List (List list)] -> Expr'List . List <$> mapM (f . (:[])) list
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
 
 i8Expr :: RuntimeThrower m => (Int8 -> Int8 -> Int8) -> Expr m
 i8Expr op = Expr'Fn . Fn $ \args ->
