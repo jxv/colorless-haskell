@@ -6,6 +6,8 @@ module Colorless.Ast
   , If(..)
   , Get(..)
   , Define(..)
+  , Match(..)
+  , MatchCase(..)
   , Lambda(..)
   , List(..)
   , Tuple(..)
@@ -40,6 +42,7 @@ data Ast
   | Ast'If If
   | Ast'Get Get
   | Ast'Define Define
+  | Ast'Match Match
   | Ast'Lambda Lambda
   | Ast'List List
   | Ast'Tuple Tuple
@@ -247,6 +250,7 @@ instance FromJSON Ast where
     <|> (Ast'If <$> parseJSON v)
     <|> (Ast'Get <$> parseJSON v)
     <|> (Ast'Define <$> parseJSON v)
+    <|> (Ast'Match <$> parseJSON v)
     <|> (Ast'Lambda <$> parseJSON v)
     <|> (Ast'List <$> parseJSON v)
     <|> (Ast'Tuple <$> parseJSON v)
@@ -266,6 +270,7 @@ instance ToJSON Ast where
     Ast'If a -> toJSON a
     Ast'Get a -> toJSON a
     Ast'Define a -> toJSON a
+    Ast'Match a -> toJSON a
     Ast'Lambda a -> toJSON a
     Ast'List a -> toJSON a
     Ast'Tuple a -> toJSON a
@@ -333,6 +338,36 @@ instance FromJSON Define where
 
 instance ToJSON Define where
   toJSON Define{var,expr} = toJSON ["def", toJSON var, toJSON expr]
+
+data MatchCase
+  = MatchCase'Tag EnumeralName Ast
+  | MatchCase'Members EnumeralName Symbol Ast
+  deriving (Show, Eq)
+
+instance ToJSON MatchCase where
+  toJSON (MatchCase'Tag name ast) = toJSON [toJSON name, toJSON ast]
+  toJSON (MatchCase'Members name sym ast) = toJSON [toJSON name, toJSON sym, toJSON ast]
+
+instance FromJSON MatchCase where
+  parseJSON (Array arr) = case V.toList arr of
+    [name, ast] -> MatchCase'Tag <$> parseJSON name <*> parseJSON ast
+    [name, sym, ast] -> MatchCase'Members <$> parseJSON name <*> parseJSON sym <*> parseJSON ast
+    _ -> mzero
+  parseJSON _ = mzero
+
+data Match = Match
+  { enumeral :: Ast
+  , cases :: [MatchCase]
+  } deriving (Show, Eq)
+
+instance FromJSON Match where
+  parseJSON (Array arr) = case V.toList arr of
+    ("match":enumeral:cases) -> Match <$> parseJSON enumeral <*> mapM parseJSON cases
+    _ -> mzero
+  parseJSON _ = mzero
+
+instance ToJSON Match where
+  toJSON Match{enumeral, cases} = toJSON $ ["match", toJSON enumeral] ++ map toJSON cases
 
 data Lambda = Lambda
   { args :: [(Symbol, Type)]

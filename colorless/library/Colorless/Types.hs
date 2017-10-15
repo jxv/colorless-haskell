@@ -73,6 +73,7 @@ data RuntimeError
   | RuntimeError'LangExprLimit Int
   | RuntimeError'UnknownVariable Text
   | RuntimeError'IncompatibleType
+  | RuntimeError'MissingMatchCase
   | RuntimeError'TooFewArguments
   | RuntimeError'TooManyArguments
   | RuntimeError'NoApiVersion
@@ -99,6 +100,7 @@ instance ToJSON RuntimeError where
     RuntimeError'LangServiceCallLimit l -> object [ "tag" .= String "LangServiceCallLimit", "limit" .= l ]
     RuntimeError'UnknownVariable m -> object [ "tag" .= String "UnknownVariable", "name" .= m ]
     RuntimeError'IncompatibleType -> e "IncompatibleType"
+    RuntimeError'MissingMatchCase -> e "MissingMatchCase"
     RuntimeError'TooFewArguments -> e "TooFewArguments"
     RuntimeError'TooManyArguments -> e "TooManyArguments"
     RuntimeError'NoApiVersion -> e "NoApiVersion"
@@ -128,6 +130,7 @@ instance FromJSON RuntimeError where
       "LangServiceCallLimit" -> RuntimeError'LangServiceCallLimit <$> o .: "limit"
       "UnknownVariable" -> RuntimeError'UnknownVariable <$> o .: "name"
       "IncompatibleType" -> pure RuntimeError'IncompatibleType
+      "MissingMatchCase" -> pure RuntimeError'MissingMatchCase
       "TooFewArguments" -> pure RuntimeError'TooFewArguments
       "TooManyArguments" -> pure RuntimeError'TooManyArguments
       "NoApiVersion" -> pure RuntimeError'NoApiVersion

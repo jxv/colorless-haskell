@@ -538,8 +538,6 @@ eitheR = \case
   Left expr -> Expr $ Ast'Enumeral $ Ast.Enumeral "Left" $ Just $ Map.fromList [("left", toAst expr)]
   Right expr -> Expr $ Ast'Enumeral $ Ast.Enumeral "Right" $ Just $ Map.fromList [("right", toAst expr)]
 
---
-
 tuple2
   :: (HasType t1, HasType t2)
   => Expr t1 -> Expr t2

@@ -10,6 +10,8 @@ module Colorless.Server.Expr
   , If(..)
   , Get(..)
   , Define(..)
+  , Match(..)
+  , MatchCase(..)
   , Lambda(..)
   , Fn(..)
   , List(..)
@@ -110,6 +112,7 @@ data Expr m
   | Expr'Val Val
   | Expr'If (If m)
   | Expr'Get (Get m)
+  | Expr'Match (Match m)
   | Expr'Define (Define m)
   | Expr'Lambda (Lambda m)
   | Expr'List (List m)
@@ -153,6 +156,16 @@ data If m = If
 data Get m = Get
   { path :: [Text]
   , expr :: Expr m
+  } deriving (Show, Eq)
+
+data MatchCase m
+  = MatchCase'Tag (Expr m)
+  | MatchCase'Members Symbol (Expr m)
+  deriving (Show, Eq)
+
+data Match m = Match
+  { enumeral :: Expr m
+  , cases :: Map EnumeralName (MatchCase m)
   } deriving (Show, Eq)
 
 data Define m = Define
@@ -238,6 +251,7 @@ fromAst = \case
   Ast'If Ast.If{cond,true,false} -> Expr'If $ If (fromAst cond) (fromAst true) (fromAst false)
   Ast'Get Ast.Get{path,val} -> Expr'Get $ Get path (fromAst val)
   Ast'Define Ast.Define{var,expr} -> Expr'Define $ Define var (fromAst expr)
+  Ast'Match Ast.Match{enumeral,cases} -> Expr'Match $ Match (fromAst enumeral) (fromAstMatchCases cases)
   Ast'Lambda Ast.Lambda{args,expr} -> Expr'Lambda $ Lambda args (fromAst expr)
   Ast'List Ast.List{list} -> Expr'List $ List $ map fromAst list
   Ast'Tuple Ast.Tuple{tuple} -> Expr'Tuple $ Tuple $ map fromAst tuple
@@ -251,6 +265,12 @@ fromAst = \case
   Ast'Struct Ast.Struct{m} -> Expr'UnVal $ UnVal'UnStruct $ UnStruct (fromAst <$> m)
   Ast'Wrap Ast.Wrap{w} -> Expr'UnVal $ UnVal'UnWrap $ UnWrap (fromAst w)
   Ast'Const c -> Expr'UnVal $ UnVal'Const c
+
+fromAstMatchCases :: Monad m => [Ast.MatchCase] -> Map EnumeralName (MatchCase m)
+fromAstMatchCases = Map.fromList . map cvt
+  where
+    cvt (Ast.MatchCase'Tag name ast) = (name, MatchCase'Tag (fromAst ast))
+    cvt (Ast.MatchCase'Members name sym ast) = (name, MatchCase'Members sym (fromAst ast))
 
 --
 
@@ -271,6 +291,13 @@ addVarToEnv maybeVariableLimit envRef var ref env = do
     Just limit -> when (Map.size env' > limit) $ runtimeThrow RuntimeError'VariableLimit
   liftIO $ writeIORef envRef env'
 
+addVarToScope :: (MonadIO m, RuntimeThrower m) => IORef (Env m) -> Symbol -> Expr m -> Eval m ()
+addVarToScope envRef var expr = do
+  env <- liftIO $ readIORef envRef
+  ref <- liftIO $ newIORef expr
+  limit <- variableLimit <$> asks limits
+  addVarToEnv limit envRef var ref env
+
 varLookup :: (MonadIO m, RuntimeThrower m) => Map Symbol (IORef a) -> Symbol -> m a
 varLookup env symbol@(Symbol s) = case Map.lookup symbol env of
   Nothing -> runtimeThrow $ RuntimeError'UnknownVariable s
@@ -286,6 +313,7 @@ eval expr envRef = case expr of
   Expr'Val val -> return $ Expr'Val val
   Expr'Get get -> evalGet get envRef
   Expr'Define define -> evalDefine define envRef
+  Expr'Match match -> evalMatch match envRef
   Expr'Lambda lambda -> evalLambda lambda envRef
   Expr'Fn _ -> return expr -- throw error?
   Expr'List list -> evalList list envRef
@@ -368,11 +396,26 @@ evalDefine :: (MonadIO m, RuntimeThrower m) => Define m -> IORef (Env m) -> Eval
 evalDefine Define{var, expr} envRef = do
   tickExpr
   expr' <- eval expr envRef
-  env <- liftIO $ readIORef envRef
-  ref <- liftIO $ newIORef expr'
-  limit <- variableLimit <$> asks limits
-  addVarToEnv limit envRef var ref env
+  addVarToScope envRef var expr'
   return expr'
+
+evalMatch :: (MonadIO m, RuntimeThrower m) => Match m -> IORef (Env m) -> Eval m (Expr m)
+evalMatch Match{enumeral, cases} envRef = do
+  tickExpr
+  envRef' <- liftIO $ newIORef =<< readIORef envRef
+  enumeral' <- eval enumeral envRef'
+  case enumeral' of
+    Expr'Val (Val'ApiVal (ApiVal'Enumeral e)) -> case e of
+      Enumeral name members -> case Map.lookup name cases of
+        Nothing -> runtimeThrow RuntimeError'MissingMatchCase
+        Just matchCase -> case (matchCase, members) of
+          (MatchCase'Tag expr, Nothing) -> eval expr envRef
+          (MatchCase'Members var expr, Just _) -> do
+            envRef'' <- liftIO $ newIORef =<< readIORef envRef
+            addVarToScope envRef'' var enumeral'
+            eval expr envRef''
+          _ -> runtimeThrow RuntimeError'IncompatibleType -- Should or should have members. Incompatible Val?
+    _ -> runtimeThrow RuntimeError'IncompatibleType -- Some enumeral, Incompatible Val?
 
 evalLambda :: (MonadIO m, RuntimeThrower m) => Lambda m -> IORef (Env m) -> Eval m (Expr m)
 evalLambda Lambda{params, expr} envRef = do
