@@ -78,6 +78,8 @@ module Colorless.Client.Expr
   , list
   , eitheR
   --
+  , mapLeft
+  , mapRight
   , mapOption
   , mapList
   , filterList
@@ -1225,6 +1227,12 @@ call (Expr'MembersCtor _ _) _ = error "Unevalated member contructor expression c
 
 (-<) :: ToArgs args => Expr (Fn (args -> a)) -> args -> Expr a
 f -< x = call f x
+
+mapLeft :: Expr (Fn ((Expr (Fn (Expr a -> b)), Expr (Either a c)) -> Either b c))
+mapLeft = Expr (Ast'Ref $ Ast.Ref "mapLeft")
+
+mapRight :: Expr (Fn ((Expr (Fn (Expr a -> b)), Expr (Either c a)) -> Either c b))
+mapRight = Expr (Ast'Ref $ Ast.Ref "mapLeft")
 
 mapOption :: Expr (Fn ((Expr (Fn (Expr a -> b)), Expr (Maybe a)) -> Maybe b))
 mapOption = Expr (Ast'Ref $ Ast.Ref "mapOption")

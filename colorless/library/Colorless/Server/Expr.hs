@@ -648,6 +648,9 @@ emptyEnv = do
 
   mapOption <- newIORef mapOptionExpr
 
+  mapLeft <- newIORef mapLeftExpr
+  mapRight <- newIORef mapRightExpr
+
   newIORef $ Map.fromList
     [ ("not",noT)
 
@@ -710,7 +713,44 @@ emptyEnv = do
     , ("mapList", mapList)
     , ("filterList", filterList)
     , ("reduceList", reduceList)
+
+    , ("mapLeft", mapLeft)
+    , ("mapRight", mapRight)
     ]
+
+mapRightExpr :: RuntimeThrower m => Expr m
+mapRightExpr = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Fn (Fn f), expr@(Expr'Val (Val'ApiVal (ApiVal'Enumeral Enumeral{tag,m})))] -> case tag of
+      "Right" -> case m >>= Map.lookup "right" of
+        Nothing -> runtimeThrow RuntimeError'IncompatibleType -- Not an Either'Left
+        Just _ -> do
+          left <- f [expr]
+          case left of
+            Expr'Val v -> return $ Expr'Val $ Val'ApiVal $ ApiVal'Enumeral $ Enumeral tag (Map.insert "right" v <$> m)
+            _ -> runtimeThrow RuntimeError'IncompatibleType -- Should be a Val
+      "Left" -> return expr
+      _ -> runtimeThrow RuntimeError'IncompatibleType -- Not an Either
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+
+mapLeftExpr :: RuntimeThrower m => Expr m
+mapLeftExpr = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Fn (Fn f), expr@(Expr'Val (Val'ApiVal (ApiVal'Enumeral Enumeral{tag,m})))] -> case tag of
+      "Left" -> case m >>= Map.lookup "left" of
+        Nothing -> runtimeThrow RuntimeError'IncompatibleType -- Not an Either'Left
+        Just _ -> do
+          left <- f [expr]
+          case left of
+            Expr'Val v -> return $ Expr'Val $ Val'ApiVal $ ApiVal'Enumeral $ Enumeral tag (Map.insert "left" v <$> m)
+            _ -> runtimeThrow RuntimeError'IncompatibleType -- Should be a Val
+      "Right" -> return expr
+      _ -> runtimeThrow RuntimeError'IncompatibleType -- Not an Either
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
 
 mapOptionExpr :: RuntimeThrower m => Expr m
 mapOptionExpr = Expr'Fn . Fn $ \args ->
