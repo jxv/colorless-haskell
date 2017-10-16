@@ -17,6 +17,7 @@ module Colorless.Client.Expr
   , defn
   , defnRec
   , iF
+  , iflet
   , get
   , set
   , dot
@@ -318,6 +319,9 @@ dO (Stmt s _) = Expr (Ast'Do $ Ast.Do s)
 
 iF :: HasType a => Expr Bool -> Expr a -> Expr a -> Expr a
 iF cond t f = Expr (Ast'If $ Ast.If (toAst cond) (toAst t) (toAst f))
+
+iflet :: HasType a => Symbol -> Expr (Maybe a) -> (Expr a -> Expr b) -> Expr b -> Expr b
+iflet sym opt s n = Expr $ Ast'Iflet $ Ast.Iflet sym (toAst opt) (toAst $ s (Expr $ Ast'Ref $ Ast.Ref sym)) (toAst n)
 
 --
 
