@@ -563,6 +563,8 @@ evalEnumerationUnCall EnumerationUnCall{n,e} envRef = do
 
 emptyEnv :: RuntimeThrower m => IO (IORef (Env m))
 emptyEnv = do
+  noT <- newIORef notExpr
+
   eq <- newIORef eqExpr
   neq <- newIORef neqExpr
   lt <- newIORef ltExpr
@@ -622,7 +624,9 @@ emptyEnv = do
   reduceList <- newIORef reduceListExpr
 
   newIORef $ Map.fromList
-    [ ("eq", eq)
+    [ ("not",noT)
+
+    , ("eq", eq)
     , ("neq", neq)
     , ("lt", lt)
     , ("lte", lte)
@@ -912,7 +916,7 @@ boolExpr :: RuntimeThrower m
   -> Expr m
 boolExpr num i8 i16 i32 i64 u8 u16 u32 u64 val = Expr'Fn . Fn $ \args ->
   case args of
-    (_:[]) -> runtimeThrow RuntimeError'TooManyArguments
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> toExpr $ x `num` y
 
     [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Prim (Prim'I8 y))] -> toExpr $ x `i8` y
@@ -999,7 +1003,7 @@ numExpr :: (RuntimeThrower m, ToVal a)
   -> Expr m
 numExpr num i8 i16 i32 i64 u8 u16 u32 u64 = Expr'Fn . Fn $ \args ->
   case args of
-    (_:[]) -> runtimeThrow RuntimeError'TooManyArguments
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> toExpr $ x `num` y
 
     [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Prim (Prim'I8 y))] -> toExpr $ x `i8` y
@@ -1070,6 +1074,16 @@ numExpr num i8 i16 i32 i64 u8 u16 u32 u64 = Expr'Fn . Fn $ \args ->
     _ -> runtimeThrow RuntimeError'TooManyArguments
     where
       toExpr v = return $ Expr'Val (toVal v)
+
+notExpr :: RuntimeThrower m => Expr m
+notExpr = Expr'Fn . Fn $ \args ->
+  case args of
+    [] -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Val (Val'Const (Const'Bool x))] -> toExpr $ not x
+    [Expr'Val (Val'Prim (Prim'Bool x))] -> toExpr $ not x
+    _ -> runtimeThrow RuntimeError'TooManyArguments
+  where
+    toExpr v = return $ Expr'Val (toVal v)
 
 eqExpr :: RuntimeThrower m => Expr m
 eqExpr = boolExpr (==) (==) (==) (==) (==) (==) (==) (==) (==) (==)

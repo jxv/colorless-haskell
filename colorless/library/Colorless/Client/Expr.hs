@@ -339,6 +339,9 @@ set (Path path) src dest = Expr $ Ast'Set $ Ast.Set path (toAst src) (toAst dest
 
 --
 
+noT :: Expr Bool -> Expr Bool
+noT x = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "not") [toAst x])
+
 eq :: (HasType a) => Expr a -> Expr a -> Expr Bool
 eq x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "eq") [toAst x, toAst y])
 
