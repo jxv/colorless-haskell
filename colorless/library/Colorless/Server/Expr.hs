@@ -623,6 +623,8 @@ emptyEnv = do
   filterList <- newIORef filterListExpr
   reduceList <- newIORef reduceListExpr
 
+  mapOption <- newIORef mapOptionExpr
+
   newIORef $ Map.fromList
     [ ("not",noT)
 
@@ -684,7 +686,17 @@ emptyEnv = do
     , ("filterList", filterList)
     , ("reduceList", reduceList)
 
+    , ("mapOption", mapOption)
     ]
+
+mapOptionExpr :: RuntimeThrower m => Expr m
+mapOptionExpr = Expr'Fn . Fn $ \args ->
+  case args of
+    (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
+    [Expr'Fn _, Expr'Val (Val'Const Const'Null)] -> return $ Expr'Val (Val'Const Const'Null)
+    [Expr'Fn (Fn f), expr] -> f [expr]
+    (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'TooManyArguments
 
 mapListExpr :: RuntimeThrower m => Expr m
 mapListExpr = Expr'Fn . Fn $ \args ->
