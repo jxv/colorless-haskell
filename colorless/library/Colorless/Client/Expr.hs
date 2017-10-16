@@ -18,6 +18,7 @@ module Colorless.Client.Expr
   , defnRec
   , iF
   , get
+  , set
   , dot
   , (<.>)
   --
@@ -332,6 +333,9 @@ unsafePath = Path
 
 get :: (HasType a, HasType b) => Path (a -> b) -> Expr a -> Expr b
 get (Path path) expr = Expr $ Ast'Get $ Ast.Get path (toAst expr)
+
+set :: (HasType a, HasType b) => Path (a -> b) -> Expr b -> Expr a -> Expr a
+set (Path path) src dest = Expr $ Ast'Set $ Ast.Set path (toAst src) (toAst dest)
 
 --
 
