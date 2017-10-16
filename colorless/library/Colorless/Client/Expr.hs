@@ -22,6 +22,7 @@ module Colorless.Client.Expr
   , dot
   , (<.>)
   --
+  , noT
   , eq
   , neq
   , addI8
