@@ -8,6 +8,7 @@ module Colorless.Server.Expr
   , UnWrap(..)
   , UnStruct(..)
   , If(..)
+  , Iflet(..)
   , Get(..)
   , Define(..)
   , Match(..)
@@ -111,6 +112,7 @@ data Expr m
   | Expr'UnVal (UnVal m)
   | Expr'Val Val
   | Expr'If (If m)
+  | Expr'Iflet (Iflet m)
   | Expr'Get (Get m)
   | Expr'Set (Set m)
   | Expr'Match (Match m)
@@ -152,6 +154,13 @@ data If m = If
   { cond :: Expr m
   , true :: Expr m
   , false :: Expr m
+  } deriving (Show, Eq)
+
+data Iflet m = Iflet
+  { symbol :: Symbol
+  , option :: Expr m
+  , some :: Expr m
+  , none :: Expr m
   } deriving (Show, Eq)
 
 data Get m = Get
@@ -256,6 +265,7 @@ fromAst :: Monad m => Ast -> Expr m
 fromAst = \case
   Ast'Ref Ast.Ref{symbol} -> Expr'Ref $ Ref symbol
   Ast'If Ast.If{cond,true,false} -> Expr'If $ If (fromAst cond) (fromAst true) (fromAst false)
+  Ast'Iflet Ast.Iflet{symbol, option, some, none} -> Expr'Iflet $ Iflet symbol (fromAst option) (fromAst some) (fromAst none)
   Ast'Get Ast.Get{path,val} -> Expr'Get $ Get path (fromAst val)
   Ast'Set Ast.Set{path,src,dest} -> Expr'Set $ Set path (fromAst src) (fromAst dest)
   Ast'Define Ast.Define{var,expr} -> Expr'Define $ Define var (fromAst expr)
@@ -317,6 +327,7 @@ eval :: (MonadIO m, RuntimeThrower m) => Expr m -> IORef (Env m) -> Eval m (Expr
 eval expr envRef = case expr of
   Expr'Ref atom -> evalRef atom envRef
   Expr'If if' -> evalIf if' envRef
+  Expr'Iflet iflet -> evalIflet iflet envRef
   Expr'UnVal unVal -> evalUnVal unVal envRef
   Expr'Val val -> return $ Expr'Val val
   Expr'Get get -> evalGet get envRef
@@ -374,6 +385,18 @@ evalIf If{cond, true, false} envRef = do
       envRef'' <- liftIO $ newIORef =<< readIORef envRef
       eval (if cond' then true else false) envRef''
     _ -> runtimeThrow RuntimeError'IncompatibleType
+
+evalIflet :: (MonadIO m, RuntimeThrower m) => Iflet m -> IORef (Env m) -> Eval m (Expr m)
+evalIflet Iflet{symbol, option, some, none} envRef = do
+  tickExpr
+  envRef' <- liftIO $ newIORef =<< readIORef envRef
+  option' <- eval option envRef'
+  case option' of
+    Expr'Val (Val'Const Const'Null) -> eval none envRef'
+    some' -> do
+      envRef'' <- liftIO $ newIORef =<< readIORef envRef
+      addVarToScope envRef'' symbol some'
+      eval some envRef''
 
 evalGet :: (MonadIO m, RuntimeThrower m) => Get m -> IORef (Env m) -> Eval m (Expr m)
 evalGet Get{path,expr} envRef = do
@@ -682,11 +705,11 @@ emptyEnv = do
     , ("concat", concat')
     , ("tuple", tuple)
 
+    , ("mapOption", mapOption)
+
     , ("mapList", mapList)
     , ("filterList", filterList)
     , ("reduceList", reduceList)
-
-    , ("mapOption", mapOption)
     ]
 
 mapOptionExpr :: RuntimeThrower m => Expr m

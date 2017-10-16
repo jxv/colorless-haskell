@@ -4,6 +4,7 @@ module Colorless.Ast
   , ToAst(..)
   , Ref(..)
   , If(..)
+  , Iflet(..)
   , Get(..)
   , Set(..)
   , Define(..)
@@ -41,6 +42,7 @@ import Colorless.Types
 data Ast
   = Ast'Ref Ref
   | Ast'If If
+  | Ast'Iflet Iflet
   | Ast'Get Get
   | Ast'Set Set
   | Ast'Define Define
@@ -250,6 +252,7 @@ instance FromJSON Ast where
   parseJSON v
     =   (Ast'Ref <$> parseJSON v)
     <|> (Ast'If <$> parseJSON v)
+    <|> (Ast'Iflet <$> parseJSON v)
     <|> (Ast'Get <$> parseJSON v)
     <|> (Ast'Set <$> parseJSON v)
     <|> (Ast'Define <$> parseJSON v)
@@ -271,6 +274,7 @@ instance ToJSON Ast where
   toJSON = \case
     Ast'Ref a -> toJSON a
     Ast'If a -> toJSON a
+    Ast'Iflet a -> toJSON a
     Ast'Get a -> toJSON a
     Ast'Set a -> toJSON a
     Ast'Define a -> toJSON a
@@ -314,6 +318,22 @@ instance FromJSON If where
 
 instance ToJSON If where
   toJSON If{cond,true,false} = toJSON ["if", toJSON cond, toJSON true, toJSON false]
+
+data Iflet = Iflet
+  { symbol :: Symbol
+  , option :: Ast
+  , some :: Ast
+  , none :: Ast
+  } deriving (Show, Eq)
+
+instance FromJSON Iflet where
+  parseJSON (Array arr) = case V.toList arr of
+    ["iflet", symbol, option, some, none] -> Iflet <$> parseJSON symbol <*> parseJSON option <*> parseJSON some <*> parseJSON none
+    _ -> mzero
+  parseJSON _ = mzero
+
+instance ToJSON Iflet where
+  toJSON Iflet{symbol,option,some,none} = toJSON ["iflet", toJSON symbol, toJSON option, toJSON some, toJSON none]
 
 data Get = Get
   { path :: [Text]
