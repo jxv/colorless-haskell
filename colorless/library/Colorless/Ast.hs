@@ -5,6 +5,7 @@ module Colorless.Ast
   , Ref(..)
   , If(..)
   , Get(..)
+  , Set(..)
   , Define(..)
   , Match(..)
   , MatchCase(..)
@@ -41,6 +42,7 @@ data Ast
   = Ast'Ref Ref
   | Ast'If If
   | Ast'Get Get
+  | Ast'Set Set
   | Ast'Define Define
   | Ast'Match Match
   | Ast'Lambda Lambda
@@ -249,6 +251,7 @@ instance FromJSON Ast where
     =   (Ast'Ref <$> parseJSON v)
     <|> (Ast'If <$> parseJSON v)
     <|> (Ast'Get <$> parseJSON v)
+    <|> (Ast'Set <$> parseJSON v)
     <|> (Ast'Define <$> parseJSON v)
     <|> (Ast'Match <$> parseJSON v)
     <|> (Ast'Lambda <$> parseJSON v)
@@ -269,6 +272,7 @@ instance ToJSON Ast where
     Ast'Ref a -> toJSON a
     Ast'If a -> toJSON a
     Ast'Get a -> toJSON a
+    Ast'Set a -> toJSON a
     Ast'Define a -> toJSON a
     Ast'Match a -> toJSON a
     Ast'Lambda a -> toJSON a
@@ -324,6 +328,21 @@ instance FromJSON Get where
 
 instance ToJSON Get where
   toJSON Get{path,val} = toJSON ["get", toJSON path, toJSON val]
+
+data Set = Set
+  { path :: [Text]
+  , src :: Ast
+  , dest :: Ast
+  } deriving (Show, Eq)
+
+instance FromJSON Set where
+  parseJSON (Array arr) = case V.toList arr of
+    ["set", path, src, dest] -> Set <$> parseJSON path <*> parseJSON src <*> parseJSON dest
+    _ -> mzero
+  parseJSON _ = mzero
+
+instance ToJSON Set where
+  toJSON Set{path,src,dest} = toJSON ["set", toJSON path, toJSON src, toJSON dest]
 
 data Define = Define
   { var :: Symbol

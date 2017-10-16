@@ -112,6 +112,7 @@ data Expr m
   | Expr'Val Val
   | Expr'If (If m)
   | Expr'Get (Get m)
+  | Expr'Set (Set m)
   | Expr'Match (Match m)
   | Expr'Define (Define m)
   | Expr'Lambda (Lambda m)
@@ -156,6 +157,12 @@ data If m = If
 data Get m = Get
   { path :: [Text]
   , expr :: Expr m
+  } deriving (Show, Eq)
+
+data Set m = Set
+  { path :: [Text]
+  , src :: Expr m
+  , dest :: Expr m
   } deriving (Show, Eq)
 
 data MatchCase m
@@ -250,6 +257,7 @@ fromAst = \case
   Ast'Ref Ast.Ref{symbol} -> Expr'Ref $ Ref symbol
   Ast'If Ast.If{cond,true,false} -> Expr'If $ If (fromAst cond) (fromAst true) (fromAst false)
   Ast'Get Ast.Get{path,val} -> Expr'Get $ Get path (fromAst val)
+  Ast'Set Ast.Set{path,src,dest} -> Expr'Set $ Set path (fromAst src) (fromAst dest)
   Ast'Define Ast.Define{var,expr} -> Expr'Define $ Define var (fromAst expr)
   Ast'Match Ast.Match{enumeral,cases} -> Expr'Match $ Match (fromAst enumeral) (fromAstMatchCases cases)
   Ast'Lambda Ast.Lambda{args,expr} -> Expr'Lambda $ Lambda args (fromAst expr)
@@ -312,6 +320,7 @@ eval expr envRef = case expr of
   Expr'UnVal unVal -> evalUnVal unVal envRef
   Expr'Val val -> return $ Expr'Val val
   Expr'Get get -> evalGet get envRef
+  Expr'Set set -> evalSet set envRef
   Expr'Define define -> evalDefine define envRef
   Expr'Match match -> evalMatch match envRef
   Expr'Lambda lambda -> evalLambda lambda envRef
@@ -391,6 +400,46 @@ getterApiVal (mName:path) (ApiVal'Enumeral Enumeral{m})
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
       Just member -> getter path (Expr'Val member)
 getterApiVal _ _ = runtimeThrow RuntimeError'IncompatibleType
+
+evalSet :: (MonadIO m, RuntimeThrower m) => Set m -> IORef (Env m) -> Eval m (Expr m)
+evalSet Set{path,src,dest} envRef = do
+  tickExpr
+  dest' <- eval dest envRef
+  src' <- eval src envRef
+  setter path src' dest'
+
+setter :: (MonadIO m, RuntimeThrower m) => [Text] -> Expr m -> Expr m -> Eval m (Expr m)
+setter [] src _ = return src
+setter path src dest =
+  case dest of
+    Expr'Val destVal -> case destVal of
+      Val'ApiVal destApiVal -> setterApiVal path src destApiVal
+      _ -> runtimeThrow RuntimeError'IncompatibleType
+    _ -> runtimeThrow RuntimeError'IncompatibleType
+
+setterApiVal :: (MonadIO m, RuntimeThrower m) => [Text] -> Expr m -> ApiVal -> Eval m (Expr m)
+setterApiVal (mName:path) src (ApiVal'Struct Struct{m}) =
+  case Map.lookup (MemberName mName) m of
+    Nothing -> runtimeThrow RuntimeError'IncompatibleType
+    Just member -> do
+      exprMember' <- setter path src (Expr'Val member)
+      case exprMember' of
+        Expr'Val member' -> return . Expr'Val . Val'ApiVal . ApiVal'Struct . Struct $
+          Map.insert (MemberName mName) member' m
+        _ -> runtimeThrow RuntimeError'IncompatibleType -- Needs a Val
+setterApiVal (mName:path) src (ApiVal'Enumeral Enumeral{tag, m})
+  | mName == "tag" = runtimeThrow RuntimeError'IncompatibleType
+  | otherwise = case m of
+      Nothing -> runtimeThrow RuntimeError'IncompatibleType
+      Just members -> case Map.lookup (MemberName mName) members of
+        Nothing -> runtimeThrow RuntimeError'IncompatibleType
+        Just member -> do
+          exprMember' <- setter path src (Expr'Val member)
+          case exprMember' of
+            Expr'Val member' -> return . Expr'Val . Val'ApiVal . ApiVal'Enumeral $
+              Enumeral { tag = tag, m = Just $ Map.insert (MemberName mName) member' members }
+            _ -> runtimeThrow RuntimeError'IncompatibleType -- Needs a Val
+setterApiVal _ _ _ = runtimeThrow RuntimeError'IncompatibleType
 
 evalDefine :: (MonadIO m, RuntimeThrower m) => Define m -> IORef (Env m) -> Eval m (Expr m)
 evalDefine Define{var, expr} envRef = do
