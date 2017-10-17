@@ -1,0 +1,24 @@
+name: fluid-idl-scotty
+version: '0.0.0'
+category: Web
+synopsis: Scotty server add-on for Fluid
+description: Scotty server add-on for Fluid
+maintainer: Joe Vargas
+license: BSD3
+extra-source-files:
+- package.yaml
+- README.md
+ghc-options: -Wall
+default-extensions:
+- OverloadedStrings
+- NamedFieldPuns
+library:
+  dependencies:
+  - aeson
+  - base >= 4.7 && < 5
+  - fluid-idl
+  - scotty
+  - text
+  - mtl
+  - wai
+  source-dirs: library
