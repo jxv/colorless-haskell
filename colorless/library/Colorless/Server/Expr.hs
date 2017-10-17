@@ -94,13 +94,13 @@ tick getLimit langCount err = do
         else liftIO $ writeIORef ref (count + 1)
 
 tickServiceCall :: (MonadIO m, RuntimeThrower m) => Eval m ()
-tickServiceCall = tick serviceCallLimit langServiceCallCount RuntimeError'LangServiceCallLimit
+tickServiceCall = tick serviceCalls langServiceCallCount RuntimeError'LangServiceCallLimit
 
 tickLambda :: (MonadIO m, RuntimeThrower m) => Eval m ()
-tickLambda = tick lambdaLimit langLambdaCount RuntimeError'LangLambdaLimit
+tickLambda = tick lambdas langLambdaCount RuntimeError'LangLambdaLimit
 
 tickExpr :: (MonadIO m, RuntimeThrower m) => Eval m ()
-tickExpr = tick exprLimit langExprCount RuntimeError'LangExprLimit
+tickExpr = tick expressions langExprCount RuntimeError'LangExprLimit
 
 type Env m = Map Symbol (IORef (Expr m))
 
@@ -313,7 +313,7 @@ addVarToScope :: (MonadIO m, RuntimeThrower m) => IORef (Env m) -> Symbol -> Exp
 addVarToScope envRef var expr = do
   env <- liftIO $ readIORef envRef
   ref <- liftIO $ newIORef expr
-  limit <- variableLimit <$> asks limits
+  limit <- variables <$> asks limits
   addVarToEnv limit envRef var ref env
 
 varLookup :: (MonadIO m, RuntimeThrower m) => Map Symbol (IORef a) -> Symbol -> m a
@@ -504,7 +504,7 @@ evalLambda Lambda{params, expr} envRef = do
         else RuntimeError'TooFewArguments
       else do
         args' <- liftIO $ mapM newIORef (Map.fromList args)
-        limit <- variableLimit <$> asks limits
+        limit <- variables <$> asks limits
         envRef' <- addEnvToEnv limit args' envRef
         eval expr envRef'
 

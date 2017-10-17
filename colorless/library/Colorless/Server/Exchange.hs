@@ -7,7 +7,7 @@ module Colorless.Server.Exchange
 import Control.Monad (mzero)
 import Data.Aeson (Value(..), FromJSON(..), ToJSON(..), object, (.=), (.:))
 
-import Colorless.Types (RuntimeError)
+import Colorless.Types (RuntimeError, Limits)
 
 data Request = Request
   { meta :: Value
@@ -35,9 +35,9 @@ instance ToJSON ResponseError where
 
 data Response
   = Response'Error ResponseError
-  | Response'Success Value
+  | Response'Success Value Limits
   deriving (Show, Eq)
 
 instance ToJSON Response where
   toJSON (Response'Error m) = object [ "tag" .= String "Error", "error" .= m ]
-  toJSON (Response'Success m) = object [ "tag" .= String "Success", "success" .= m ]
+  toJSON (Response'Success m limits) = object [ "tag" .= String "Success", "success" .= m, "limits" .= limits ]

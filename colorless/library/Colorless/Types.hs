@@ -149,18 +149,21 @@ instance FromJSON RuntimeError where
   parseJSON _ = mzero
 
 data Limits = Limits
-  { variableLimit :: Maybe Int
-  , serviceCallLimit :: Maybe Int
-  , lambdaLimit :: Maybe Int
-  , exprLimit :: Maybe Int
-  } deriving (Show, Eq)
+  { variables :: Maybe Int
+  , serviceCalls :: Maybe Int
+  , lambdas :: Maybe Int
+  , expressions :: Maybe Int
+  } deriving (Show, Eq, Generic)
+
+instance ToJSON Limits
+instance FromJSON Limits
 
 defLimits :: Limits
 defLimits = Limits
-  { variableLimit = Just 50
-  , serviceCallLimit = Just 50
-  , lambdaLimit = Just 10
-  , exprLimit = Just 100
+  { variables = Just 50
+  , serviceCalls = Just 50
+  , lambdas = Just 10
+  , expressions = Just 100
   }
 
 data Hooks m meta meta' = Hooks

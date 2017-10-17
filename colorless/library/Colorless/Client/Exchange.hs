@@ -8,7 +8,7 @@ import Control.Monad (mzero)
 import Data.Aeson (Value(..), FromJSON(..), ToJSON(..), object, (.=), (.:))
 import Data.Text (Text)
 
-import Colorless.Types (RuntimeError, HasType(..), Version(..))
+import Colorless.Types (RuntimeError, HasType(..), Version(..), Limits)
 import Colorless.Ast (ToAst(..))
 import Colorless.Val (ToVal(..), FromVal(..))
 import Colorless.Client.Expr (Expr, exprJSON)
@@ -53,7 +53,7 @@ instance ToVal err => ToJSON (ResponseError err) where
 
 data Response err a
   = Response'Error (ResponseError err)
-  | Response'Success a
+  | Response'Success a Limits
   deriving (Show, Eq)
 
 instance (FromVal err, HasType err, FromVal a, HasType a) => FromJSON (Response err a) where
@@ -64,11 +64,11 @@ instance (FromVal err, HasType err, FromVal a, HasType a) => FromJSON (Response 
         m <- o .: "success"
         case fromVal m of
           Nothing -> mzero
-          Just v -> return $ Response'Success v
+          Just v -> Response'Success v <$> o .: "limits"
       "Error" -> Response'Error <$> o .: "error"
       _ -> mzero
   parseJSON _ = mzero
 
 instance (ToVal err, HasType err, ToVal a, HasType a) => ToJSON (Response err a) where
   toJSON (Response'Error m) = object [ "tag" .= String "Error", "error" .= m ]
-  toJSON (Response'Success m) = object [ "tag" .= String "Success", "success" .= toVal m ]
+  toJSON (Response'Success m limits) = object [ "tag" .= String "Success", "success" .= toVal m, "limits" .= limits]

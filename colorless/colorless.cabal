@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           colorless
-version:        2.2.19
+version:        2.2.20
 synopsis:       Colorless | The Programmatic IDL
 description:    Colorless | The Programmatic IDL
 category:       Web
