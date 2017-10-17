@@ -1,0 +1,67 @@
+name: fluid-idl
+version: '0.0.0'
+category: Web
+synopsis: Fluid | The Programmatic IDL
+description: Fluid | The Programmatic IDL
+maintainer: Joe Vargas
+license: BSD3
+extra-source-files:
+- package.yaml
+- README.md
+ghc-options: -Wall
+default-extensions:
+- ConstraintKinds
+- DeriveGeneric
+- DuplicateRecordFields
+- FlexibleContexts
+- FlexibleInstances
+- GADTs
+- GeneralizedNewtypeDeriving
+- KindSignatures
+- LambdaCase
+- MultiParamTypeClasses
+- NamedFieldPuns
+- OverloadedStrings
+- RankNTypes
+- ScopedTypeVariables
+- TupleSections
+- TypeApplications
+- TypeOperators
+library:
+  dependencies:
+  - aeson
+  - base >= 4.7 && < 5
+  - bytestring
+  - containers
+  - errors
+  - exceptions
+  - lifted-async
+  - monad-control
+  - monad-logger
+  - mtl
+  - random
+  - scientific
+  - safe-exceptions
+  - text
+  - text-conversions
+  - unordered-containers
+  - vector
+  source-dirs: library
+tests:
+  fluid-suite:
+    dependencies:
+    - aeson
+    - base >= 4.7 && < 5
+    - fluid
+    - containers
+    - hspec
+    - scientific
+    - text
+    - tuple
+    - vector
+    ghc-options:
+    - -rtsopts
+    - -threaded
+    - -with-rtsopts=-N
+    main: Spec.hs
+    source-dirs: tests

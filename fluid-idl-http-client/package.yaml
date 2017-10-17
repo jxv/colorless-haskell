@@ -1,0 +1,23 @@
+name: fluid-idl-http-client
+version: '0.0.0'
+category: Web
+synopsis: Http Client addon for Fluid
+description: Http Client addon for Fluid
+maintainer: Joe Vargas
+license: BSD3
+extra-source-files:
+- package.yaml
+- README.md
+ghc-options: -Wall
+default-extensions:
+- OverloadedStrings
+library:
+  dependencies:
+  - aeson
+  - base >= 4.7 && < 5
+  - bytestring
+  - fluid-idl
+  - http-client
+  - http-types
+  - text-conversions
+  source-dirs: library
