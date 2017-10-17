@@ -14,10 +14,10 @@ newtype ThrownValue = ThrownValue { unThrownValue :: Value }
   deriving (Show, Eq, Typeable)
 
 class MonadThrow m => ServiceThrower m where
-  serviceThrow :: ThrownValue -> m a
-  serviceThrow err = throw err
+  serviceThrow :: Value -> m a
+  serviceThrow err = throw (ThrownValue err)
 
 instance Exception ThrownValue
 
 instance MonadThrow m => ServiceThrower (ExceptT Server.Response m) where
-  serviceThrow = throwError . Server.Response'Error . Server.ResponseError'Service . unThrownValue
+  serviceThrow = throwError . Server.Response'Error . Server.ResponseError'Service
