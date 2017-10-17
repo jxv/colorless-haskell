@@ -6,6 +6,7 @@ module Fluid.Server.Scotty
   , ScottyError
   , ScottyT
   , WaiResponse
+  , LazyText
   ) where
 
 import qualified Network.Wai as Wai
@@ -18,6 +19,8 @@ import Fluid.Endpoint
 
 type WaiResponse = Wai.Response
 
+type LazyText = TL.Text
+
 runServer
   :: (MonadIO m, MonadIO n)
   => Pull
@@ -29,7 +32,7 @@ runServer Pull{port} = scottyT port
 respond
   :: (ScottyError e, MonadIO m)
   => Pull
-  -> ([(TL.Text, TL.Text)] -> Map Major (Minor, Request -> m (Either Response Response)))
+  -> ([(LazyText, LazyText)] -> Map Major (Minor, Request -> m (Either Response Response)))
   -> ScottyT e m ()
 respond Pull{path} handlerMap = post (literal $ fromText path) $ do
   req <- jsonData
@@ -41,7 +44,7 @@ respondSingleton
   :: (ScottyError e, MonadIO m)
   => Pull
   -> Version
-  -> ([(TL.Text, TL.Text)] -> Request -> m (Either Response Response))
+  -> ([(LazyText, LazyText)] -> Request -> m (Either Response Response))
   -> ScottyT e m ()
 respondSingleton Pull{path} version handler = post (literal $ fromText path) $ do
   hdrs <- headers
