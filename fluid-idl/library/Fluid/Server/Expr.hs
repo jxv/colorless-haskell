@@ -356,7 +356,11 @@ evalRef Ref{symbol} envRef = do
 
 evalUnVal :: (MonadIO m, RuntimeThrower m) => UnVal m -> IORef (Env m) -> Eval m (Expr m)
 evalUnVal unVal envRef = case unVal of
-  UnVal'Const c -> return $ Expr'Val $ Val'Const c
+  UnVal'Const c -> return $ Expr'Val $ case c of
+    Const'Null -> Val'Infer Infer'Null
+    Const'Number n -> Val'Infer (Infer'Number n)
+    Const'Bool b -> Val'Prim (Prim'Bool b)
+    Const'String s -> Val'Prim (Prim'String s)
 
   UnVal'UnStruct UnStruct{m} -> do
     members <- mapM (\(name,expr) -> (name,) <$> (forceVal =<< eval expr envRef)) (Map.toList m)
@@ -365,7 +369,8 @@ evalUnVal unVal envRef = case unVal of
   UnVal'UnWrap UnWrap{w} -> do
     w' <- eval w envRef
     case w' of
-      Expr'Val (Val'Const c) -> return $ Expr'Val $ Val'Const c
+      Expr'Val (Val'Infer c) -> return $ Expr'Val $ Val'Infer c
+      Expr'Val (Val'Prim p) -> return $ Expr'Val $ Val'Prim p
       _ -> runtimeThrow RuntimeError'IncompatibleType
 
   UnVal'UnEnumeral UnEnumeral{tag,m} -> do
@@ -381,7 +386,7 @@ evalIf If{cond, true, false} envRef = do
   envRef' <- liftIO $ newIORef =<< readIORef envRef
   v <- eval cond envRef'
   case v of
-    Expr'Val (Val'Const (Const'Bool cond')) -> do
+    Expr'Val (Val'Prim (Prim'Bool cond')) -> do
       envRef'' <- liftIO $ newIORef =<< readIORef envRef
       eval (if cond' then true else false) envRef''
     _ -> runtimeThrow RuntimeError'IncompatibleType
@@ -392,7 +397,7 @@ evalIflet Iflet{symbol, option, some, none} envRef = do
   envRef' <- liftIO $ newIORef =<< readIORef envRef
   option' <- eval option envRef'
   case option' of
-    Expr'Val (Val'Const Const'Null) -> eval none envRef'
+    Expr'Val (Val'Infer Infer'Null) -> eval none envRef'
     some' -> do
       envRef'' <- liftIO $ newIORef =<< readIORef envRef
       addVarToScope envRef'' symbol some'
@@ -524,7 +529,7 @@ evalDo :: (MonadIO m, RuntimeThrower m) => Do m -> IORef (Env m) -> Eval m (Expr
 evalDo Do{exprs} envRef = do
   tickExpr
   case exprs of
-    [] -> return $ Expr'Val $ Val'Const $ Const'Null
+    [] -> return $ Expr'Val $ Val'Infer Infer'Null
     _ -> last <$> mapM (\expr -> eval expr envRef) exprs
 
 evalFnCall :: (MonadIO m, RuntimeThrower m) => FnCall m -> IORef (Env m) -> Eval m (Expr m)
@@ -564,8 +569,8 @@ evalWrapUnCall :: (MonadIO m, RuntimeThrower m) => WrapUnCall m -> IORef (Env m)
 evalWrapUnCall WrapUnCall{n,w} envRef = do
   expr <- eval w envRef
   case expr of
-    Expr'Val (Val'Const c) -> Eval . ReaderT $ \cfg ->
-      apiCall cfg $ ApiCall'Wrap n (Wrap c)
+    Expr'Val v -> Eval . ReaderT $ \cfg ->
+      apiCall cfg $ ApiCall'Wrap n (Wrap v)
     _ -> runtimeThrow RuntimeError'IncompatibleType
 
 evalStructUnCall :: (MonadIO m, RuntimeThrower m) => StructUnCall m -> IORef (Env m) -> Eval m Val
@@ -756,7 +761,7 @@ mapOptionExpr :: RuntimeThrower m => Expr m
 mapOptionExpr = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
-    [Expr'Fn _, Expr'Val (Val'Const Const'Null)] -> return $ Expr'Val (Val'Const Const'Null)
+    [Expr'Fn _, Expr'Val (Val'Infer Infer'Null)] -> return $ Expr'Val (Val'Infer Infer'Null)
     [Expr'Fn (Fn f), expr] -> f [expr]
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooManyArguments
@@ -779,7 +784,6 @@ filterListExpr = Expr'Fn . Fn $ \args ->
         res <- f [x]
         case res of
           Expr'Val (Val'Prim (Prim'Bool b)) -> return b
-          Expr'Val (Val'Const (Const'Bool b)) -> return b
           _ -> runtimeThrow RuntimeError'IncompatibleType) -- Bool
       list
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
@@ -798,13 +802,13 @@ i8Expr op = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Prim (Prim'I8 y))] -> toExpr $ x `op` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I8 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I8 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `op` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `op` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
       (Just x', Just y') -> toExpr $ x' `op` y'
       _ -> runtimeThrow RuntimeError'IncompatibleType
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
@@ -817,13 +821,13 @@ i16Expr op = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Prim (Prim'I16 x)), Expr'Val (Val'Prim (Prim'I16 y))] -> toExpr $ x `op` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I16 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I16 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `op` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I16 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I16 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `op` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
       (Just x', Just y') -> toExpr $ x' `op` y'
       _ -> runtimeThrow RuntimeError'IncompatibleType
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
@@ -836,13 +840,13 @@ i32Expr op = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Prim (Prim'I32 x)), Expr'Val (Val'Prim (Prim'I32 y))] -> toExpr $ x `op` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I32 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I32 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `op` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I32 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I32 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `op` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
       (Just x', Just y') -> toExpr $ x' `op` y'
       _ -> runtimeThrow RuntimeError'IncompatibleType
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
@@ -855,13 +859,13 @@ i64Expr op = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Prim (Prim'I64 y))] -> toExpr $ x `op` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I64 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I64 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `op` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `op` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
       (Just x', Just y') -> toExpr $ x' `op` y'
       _ -> runtimeThrow RuntimeError'IncompatibleType
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
@@ -874,13 +878,13 @@ u8Expr op = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Prim (Prim'U8 y))] -> toExpr $ x `op` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U8 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U8 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `op` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `op` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
       (Just x', Just y') -> toExpr $ x' `op` y'
       _ -> runtimeThrow RuntimeError'IncompatibleType
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
@@ -893,13 +897,13 @@ u16Expr op = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Prim (Prim'U16 y))] -> toExpr $ x `op` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U16 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U16 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `op` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `op` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
       (Just x', Just y') -> toExpr $ x' `op` y'
       _ -> runtimeThrow RuntimeError'IncompatibleType
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
@@ -912,13 +916,13 @@ u32Expr op = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Prim (Prim'U32 y))] -> toExpr $ x `op` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U32 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U32 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `op` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `op` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
       (Just x', Just y') -> toExpr $ x' `op` y'
       _ -> runtimeThrow RuntimeError'IncompatibleType
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
@@ -931,13 +935,13 @@ u64Expr op = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Prim (Prim'U64 y))] -> toExpr $ x `op` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U64 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U64 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `op` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `op` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> case (toBoundedInteger x, toBoundedInteger y) of
       (Just x', Just y') -> toExpr $ x' `op` y'
       _ -> runtimeThrow RuntimeError'IncompatibleType
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
@@ -950,11 +954,11 @@ f32Expr op = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Prim (Prim'F32 x)), Expr'Val (Val'Prim (Prim'F32 y))] -> toExpr $ x `op` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'F32 y))] -> case toBoundedRealFloat x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'F32 y))] -> case toBoundedRealFloat x of
       x' -> toExpr $ eitherCollapse x' `op` y
-    [Expr'Val (Val'Prim (Prim'F32 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedRealFloat y of
+    [Expr'Val (Val'Prim (Prim'F32 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedRealFloat y of
       y' -> toExpr $ x `op` eitherCollapse y'
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedRealFloat x, toBoundedRealFloat y) of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> case (toBoundedRealFloat x, toBoundedRealFloat y) of
       (x', y') -> toExpr $ eitherCollapse x' `op` eitherCollapse y'
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooManyArguments
@@ -966,11 +970,11 @@ f64Expr op = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [Expr'Val (Val'Prim (Prim'F64 x)), Expr'Val (Val'Prim (Prim'F64 y))] -> toExpr $ x `op` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'F64 y))] -> case toBoundedRealFloat x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'F64 y))] -> case toBoundedRealFloat x of
       x' -> toExpr $ eitherCollapse x' `op` y
-    [Expr'Val (Val'Prim (Prim'F64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedRealFloat y of
+    [Expr'Val (Val'Prim (Prim'F64 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedRealFloat y of
       y' -> toExpr $ x `op` eitherCollapse y'
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> case (toBoundedRealFloat x, toBoundedRealFloat y) of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> case (toBoundedRealFloat x, toBoundedRealFloat y) of
       (x', y') -> toExpr $ eitherCollapse x' `op` eitherCollapse y'
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooManyArguments
@@ -992,69 +996,69 @@ boolExpr :: RuntimeThrower m
 boolExpr num i8 i16 i32 i64 u8 u16 u32 u64 val = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> toExpr $ x `num` y
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> toExpr $ x `num` y
 
     [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Prim (Prim'I8 y))] -> toExpr $ x `i8` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I8 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I8 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `i8` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `i8` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'I16 x)), Expr'Val (Val'Prim (Prim'I16 y))] -> toExpr $ x `i16` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I16 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I16 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `i16` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I16 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I16 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `i16` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'I32 x)), Expr'Val (Val'Prim (Prim'I32 y))] -> toExpr $ x `i32` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I32 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I32 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `i32` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I32 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I32 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `i32` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Prim (Prim'I64 y))] -> toExpr $ x `i64` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I64 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I64 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `i64` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `i64` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Prim (Prim'U8 y))] -> toExpr $ x `u8` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U8 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U8 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `u8` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `u8` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Prim (Prim'U16 y))] -> toExpr $ x `u16` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U16 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U16 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `u16` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `u16` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Prim (Prim'U32 y))] -> toExpr $ x `u32` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U32 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U32 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `u32` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `u32` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Prim (Prim'U64 y))] -> toExpr $ x `u64` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U64 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U64 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `u64` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `u64` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
@@ -1079,69 +1083,69 @@ numExpr :: (RuntimeThrower m, ToVal a)
 numExpr num i8 i16 i32 i64 u8 u16 u32 u64 = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Const (Const'Number y))] -> toExpr $ x `num` y
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Infer (Infer'Number y))] -> toExpr $ x `num` y
 
     [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Prim (Prim'I8 y))] -> toExpr $ x `i8` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I8 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I8 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `i8` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I8 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `i8` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'I16 x)), Expr'Val (Val'Prim (Prim'I16 y))] -> toExpr $ x `i16` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I16 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I16 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `i16` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I16 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I16 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `i16` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'I32 x)), Expr'Val (Val'Prim (Prim'I32 y))] -> toExpr $ x `i32` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I32 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I32 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `i32` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I32 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I32 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `i32` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Prim (Prim'I64 y))] -> toExpr $ x `i64` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'I64 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'I64 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `i64` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'I64 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `i64` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Prim (Prim'U8 y))] -> toExpr $ x `u8` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U8 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U8 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `u8` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U8 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `u8` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Prim (Prim'U16 y))] -> toExpr $ x `u16` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U16 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U16 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `u16` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U16 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `u16` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Prim (Prim'U32 y))] -> toExpr $ x `u32` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U32 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U32 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `u32` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U32 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `u32` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
     [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Prim (Prim'U64 y))] -> toExpr $ x `u64` y
-    [Expr'Val (Val'Const (Const'Number x)), Expr'Val (Val'Prim (Prim'U64 y))] -> case toBoundedInteger x of
+    [Expr'Val (Val'Infer (Infer'Number x)), Expr'Val (Val'Prim (Prim'U64 y))] -> case toBoundedInteger x of
       Just x' -> toExpr $ x' `u64` y
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
-    [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Const (Const'Number y))] -> case toBoundedInteger y of
+    [Expr'Val (Val'Prim (Prim'U64 x)), Expr'Val (Val'Infer (Infer'Number y))] -> case toBoundedInteger y of
       Just y' -> toExpr $ x `u64` y'
       Nothing -> runtimeThrow RuntimeError'IncompatibleType
 
@@ -1154,7 +1158,6 @@ notExpr :: RuntimeThrower m => Expr m
 notExpr = Expr'Fn . Fn $ \args ->
   case args of
     [] -> runtimeThrow RuntimeError'TooFewArguments
-    [Expr'Val (Val'Const (Const'Bool x))] -> toExpr $ not x
     [Expr'Val (Val'Prim (Prim'Bool x))] -> toExpr $ not x
     _ -> runtimeThrow RuntimeError'TooManyArguments
   where
@@ -1184,12 +1187,9 @@ concatExpr = Expr'Fn . Fn $ \args ->
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
     [x, y] -> do
       (u,v) <- case (x,y) of
-        (Expr'Val (Val'Const (Const'String x')), Expr'Val (Val'Const (Const'String y'))) -> return (x',y')
         (Expr'Val (Val'Prim (Prim'String x')), Expr'Val (Val'Prim (Prim'String y'))) -> return (x',y')
-        (Expr'Val (Val'Const (Const'String x')), Expr'Val (Val'Prim (Prim'String y'))) -> return (x',y')
-        (Expr'Val (Val'Prim (Prim'String x')), Expr'Val (Val'Const (Const'String y'))) -> return (x',y')
         _ -> runtimeThrow RuntimeError'IncompatibleType -- String
-      return $ Expr'Val . Val'Const . Const'String $ u `mappend` v
+      return $ Expr'Val . Val'Prim . Prim'String $ u `mappend` v
     _ -> runtimeThrow RuntimeError'TooManyArguments
 
 tupleExpr :: RuntimeThrower m => Expr m
@@ -1215,4 +1215,4 @@ parseApiCall ApiParser{hollow, struct, enumeration, wrap} = \case
   ApiCall'Hollow n -> Map.lookup n hollow
   ApiCall'Struct n s -> join $ ($ Val'ApiVal (ApiVal'Struct s)) <$> Map.lookup n struct
   ApiCall'Enumeration n e -> join $ ($ Val'ApiVal (ApiVal'Enumeral e)) <$> Map.lookup n enumeration
-  ApiCall'Wrap n (Wrap w) -> join $ ($ Val'Const w) <$> Map.lookup n wrap
+  ApiCall'Wrap n (Wrap w) -> join $ ($ w) <$> Map.lookup n wrap

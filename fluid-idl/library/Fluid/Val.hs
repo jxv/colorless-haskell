@@ -24,14 +24,13 @@ import Data.Map (Map)
 import Data.Text (Text)
 import Data.Int
 import Data.Word
-import Data.Scientific
 import GHC.Generics (Generic)
 
 import Fluid.Types
 import Fluid.Prim
 
 data Val
-  = Val'Const Const
+  = Val'Infer Infer
   | Val'Prim Prim
   | Val'ApiVal ApiVal
   | Val'List [Val]
@@ -39,17 +38,17 @@ data Val
 
 instance ToJSON Val where
   toJSON = \case
-    Val'Const c -> toJSON c
+    Val'Infer i -> toJSON i
     Val'ApiVal v -> toJSON v
     Val'List l -> toJSON l
     Val'Prim p -> toJSON p
 
 instance FromJSON Val where
   parseJSON = \case
-    Null -> return $ Val'Const Const'Null
-    Number n -> return $ Val'Const $ Const'Number n
-    String s -> return $ Val'Const $ Const'String s
-    Bool b -> return $ Val'Const $ Const'Bool b
+    Null -> return $ Val'Infer Infer'Null
+    Number n -> return $ Val'Infer $ Infer'Number n
+    String s -> return $ Val'Prim $ Prim'String s
+    Bool b -> return $ Val'Prim $ Prim'Bool b
     Array arr -> Val'List <$> (mapM parseJSON $ V.toList arr)
     v@Object{} -> Val'ApiVal <$> parseJSON v
 
@@ -69,7 +68,7 @@ instance FromJSON ApiVal where
     (ApiVal'Struct <$> parseJSON v)
 
 data Wrap = Wrap
-  { w :: Const
+  { w :: Val
   } deriving (Show, Eq)
 
 data Struct = Struct
@@ -107,19 +106,13 @@ class ToVal a where
   toVal :: a -> Val
 
 instance ToVal () where
-  toVal () = Val'Const Const'Null
+  toVal () = Val'Infer Infer'Null
 
 instance ToVal Bool where
-  toVal b = Val'Const $ Const'Bool b
+  toVal b = Val'Prim $ Prim'Bool b
 
 instance ToVal Text where
-  toVal s = Val'Const $ Const'String s
-
-intToVal :: Integral a => a -> Val
-intToVal n = Val'Const $ Const'Number (fromInteger $ toInteger n)
-
-instance ToVal Int where
-  toVal = intToVal
+  toVal s = Val'Prim $ Prim'String s
 
 instance ToVal Int8 where
   toVal i = Val'Prim $ Prim'I8 i
@@ -132,9 +125,6 @@ instance ToVal Int32 where
 
 instance ToVal Int64 where
   toVal i = Val'Prim $ Prim'I64 i
-
-instance ToVal Word where
-  toVal = intToVal
 
 instance ToVal Word8 where
   toVal u = Val'Prim $ Prim'U8 u
@@ -155,7 +145,7 @@ instance ToVal Double where
     toVal d = Val'Prim $ Prim'F64 d
 
 instance ToVal a => ToVal (Maybe a) where
-  toVal Nothing = Val'Const Const'Null
+  toVal Nothing = Val'Infer Infer'Null
   toVal (Just v) = toVal v
 
 instance (ToVal a, ToVal b) => ToVal (Either a b) where
@@ -294,87 +284,67 @@ class FromVal a where
   fromVal :: Val -> Maybe a
 
 instance FromVal () where
-  fromVal (Val'Const Const'Null) = Just ()
+  fromVal (Val'Infer Infer'Null) = Just ()
   fromVal _ = Nothing
 
 instance FromVal Bool where
-  fromVal (Val'Const (Const'Bool b)) = Just b
+  fromVal (Val'Prim (Prim'Bool b)) = Just b
   fromVal _ = Nothing
 
 instance FromVal Text where
-  fromVal (Val'Const (Const'String s)) = Just s
+  fromVal (Val'Prim (Prim'String s)) = Just s
   fromVal _ = Nothing
-
-intFromVal :: (Bounded i, Integral i) => Val -> Maybe i
-intFromVal (Val'Const (Const'Number n)) = toBoundedInteger n
-intFromVal _ = Nothing
-
-instance FromVal Int where
-  fromVal = intFromVal
 
 instance FromVal Int8 where
   fromVal = \case
-    Val'Const (Const'Number n) -> toBoundedInteger n
     Val'Prim (Prim'I8 i) -> Just i
     _ -> Nothing
 
 instance FromVal Int16 where
   fromVal = \case
-    Val'Const (Const'Number n) -> toBoundedInteger n
     Val'Prim (Prim'I16 i) -> Just i
     _ -> Nothing
 
 instance FromVal Int32 where
   fromVal = \case
-    Val'Const (Const'Number n) -> toBoundedInteger n
     Val'Prim (Prim'I32 i) -> Just i
     _ -> Nothing
 
 instance FromVal Int64 where
   fromVal = \case
-    Val'Const (Const'Number n) -> toBoundedInteger n
     Val'Prim (Prim'I64 i) -> Just i
     _ -> Nothing
 
-instance FromVal Word where
-  fromVal = intFromVal
-
 instance FromVal Word8 where
   fromVal = \case
-    Val'Const (Const'Number n) -> toBoundedInteger n
     Val'Prim (Prim'U8 u) -> Just u
     _ -> Nothing
 
 instance FromVal Word16 where
   fromVal = \case
-    Val'Const (Const'Number n) -> toBoundedInteger n
     Val'Prim (Prim'U16 u) -> Just u
     _ -> Nothing
 
 instance FromVal Word32 where
   fromVal = \case
-    Val'Const (Const'Number n) -> toBoundedInteger n
     Val'Prim (Prim'U32 u) -> Just u
     _ -> Nothing
 
 instance FromVal Word64 where
   fromVal = \case
-    Val'Const (Const'Number n) -> toBoundedInteger n
     Val'Prim (Prim'U64 u) -> Just u
     _ -> Nothing
 
 instance FromVal Float where
-  fromVal (Val'Const (Const'Number n)) = Just $ toRealFloat n
   fromVal (Val'Prim (Prim'F32 f)) = Just f
   fromVal _ = Nothing
 
 instance FromVal Double where
-  fromVal (Val'Const (Const'Number n)) = Just $ toRealFloat n
   fromVal (Val'Prim (Prim'F64 f)) = Just f
   fromVal _ = Nothing
 
 instance FromVal a => FromVal (Maybe a) where
-  fromVal (Val'Const Const'Null) = Just Nothing
+  fromVal (Val'Infer Infer'Null) = Just Nothing
   fromVal v = Just <$> fromVal v
 
 instance (FromVal a, FromVal b) => FromVal (Either a b) where

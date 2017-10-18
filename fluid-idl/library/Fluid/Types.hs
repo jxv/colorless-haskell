@@ -18,6 +18,7 @@ module Fluid.Types
   , EnumeralName(..)
   , MemberName(..)
   , Const(..)
+  , Infer(..)
   --
   , HasType(..)
   ) where
@@ -242,6 +243,22 @@ instance FromJSON Const where
     Bool b -> pure $ Const'Bool b
     String s -> pure $ Const'String s
     Number n -> pure $ Const'Number n
+    _ -> mzero
+
+data Infer
+  = Infer'Null
+  | Infer'Number Scientific
+  deriving (Show, Eq)
+
+instance ToJSON Infer where
+  toJSON = \case
+    Infer'Null -> Null
+    Infer'Number n -> Number n
+
+instance FromJSON Infer where
+  parseJSON = \case
+    Null -> pure $ Infer'Null
+    Number n -> pure $ Infer'Number n
     _ -> mzero
 
 class HasType a where
