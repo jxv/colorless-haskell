@@ -770,32 +770,41 @@ mapListExpr :: RuntimeThrower m => Expr m
 mapListExpr = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
-    [Expr'Fn (Fn f), Expr'List (List list)] -> Expr'List . List <$> mapM (f . (:[])) list
+    [Expr'Fn (Fn f), Expr'List (List list)] -> go f list
+    [Expr'Fn (Fn f), Expr'Val (Val'List list)] -> go f (map Expr'Val list)
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooManyArguments
+  where
+    go f list = Expr'List . List <$> mapM (f . (:[])) list
 
 filterListExpr :: RuntimeThrower m => Expr m
 filterListExpr = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
-    [Expr'Fn (Fn f), Expr'List (List list)] -> Expr'List . List <$>
-      filterM
-      (\x -> do
-        res <- f [x]
-        case res of
-          Expr'Val (Val'Prim (Prim'Bool b)) -> return b
-          _ -> runtimeThrow RuntimeError'IncompatibleType) -- Bool
-      list
+    [Expr'Fn (Fn f), Expr'List (List list)] -> go f list
+    [Expr'Fn (Fn f), Expr'Val (Val'List list)] -> go f (map Expr'Val list)
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooManyArguments
+  where
+    go f list = Expr'List . List <$>
+      filterM
+        (\x -> do
+          res <- f [x]
+          case res of
+            Expr'Val (Val'Prim (Prim'Bool b)) -> return b
+            _ -> runtimeThrow RuntimeError'IncompatibleType) -- Bool
+        list
 
 reduceListExpr :: RuntimeThrower m => Expr m
 reduceListExpr = Expr'Fn . Fn $ \args ->
   case args of
     (_:[]) -> runtimeThrow RuntimeError'TooFewArguments
-    [Expr'Fn (Fn f), a, Expr'List (List list)] -> foldlM (\x y -> f [x, y]) a list
+    [Expr'Fn (Fn f), a, Expr'List (List list)] -> go f a list
+    [Expr'Fn (Fn f), a, Expr'Val (Val'List list)] -> go f a (map Expr'Val list)
     (_:_:[]) -> runtimeThrow RuntimeError'IncompatibleType
     _ -> runtimeThrow RuntimeError'TooManyArguments
+  where
+    go f a list = foldlM (\x y -> f [x, y]) a list
 
 i8Expr :: RuntimeThrower m => (Int8 -> Int8 -> Int8) -> Expr m
 i8Expr op = Expr'Fn . Fn $ \args ->

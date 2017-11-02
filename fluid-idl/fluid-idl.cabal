@@ -1,9 +1,9 @@
--- This file has been generated from package.yaml by hpack version 0.17.0.
+-- This file has been generated from package.yaml by hpack version 0.17.1.
 --
 -- see: https://github.com/sol/hpack
 
 name:           fluid-idl
-version:        0.0.1
+version:        0.0.2
 synopsis:       Fluid | The Programmatic IDL
 description:    Fluid | The Programmatic IDL
 category:       Web
