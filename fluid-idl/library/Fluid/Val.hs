@@ -21,6 +21,7 @@ import Control.Applicative ((<|>))
 import Data.Aeson
 import Data.Aeson.Types (parseMaybe)
 import Data.Map (Map)
+import Data.Scientific (toBoundedInteger, toRealFloat)
 import Data.Text (Text)
 import Data.Int
 import Data.Word
@@ -298,49 +299,59 @@ instance FromVal Text where
 instance FromVal Int8 where
   fromVal = \case
     Val'Prim (Prim'I8 i) -> Just i
+    Val'Infer (Infer'Number n) -> toBoundedInteger n
     _ -> Nothing
 
 instance FromVal Int16 where
   fromVal = \case
     Val'Prim (Prim'I16 i) -> Just i
+    Val'Infer (Infer'Number n) -> toBoundedInteger n
     _ -> Nothing
 
 instance FromVal Int32 where
   fromVal = \case
     Val'Prim (Prim'I32 i) -> Just i
+    Val'Infer (Infer'Number n) -> toBoundedInteger n
     _ -> Nothing
 
 instance FromVal Int64 where
   fromVal = \case
     Val'Prim (Prim'I64 i) -> Just i
+    Val'Infer (Infer'Number n) -> toBoundedInteger n
     _ -> Nothing
 
 instance FromVal Word8 where
   fromVal = \case
     Val'Prim (Prim'U8 u) -> Just u
+    Val'Infer (Infer'Number n) -> toBoundedInteger n
     _ -> Nothing
 
 instance FromVal Word16 where
   fromVal = \case
     Val'Prim (Prim'U16 u) -> Just u
+    Val'Infer (Infer'Number n) -> toBoundedInteger n
     _ -> Nothing
 
 instance FromVal Word32 where
   fromVal = \case
     Val'Prim (Prim'U32 u) -> Just u
+    Val'Infer (Infer'Number n) -> toBoundedInteger n
     _ -> Nothing
 
 instance FromVal Word64 where
   fromVal = \case
     Val'Prim (Prim'U64 u) -> Just u
+    Val'Infer (Infer'Number n) -> toBoundedInteger n
     _ -> Nothing
 
 instance FromVal Float where
   fromVal (Val'Prim (Prim'F32 f)) = Just f
+  fromVal (Val'Infer (Infer'Number n)) = Just $ toRealFloat n
   fromVal _ = Nothing
 
 instance FromVal Double where
   fromVal (Val'Prim (Prim'F64 f)) = Just f
+  fromVal (Val'Infer (Infer'Number n)) = Just $ toRealFloat n
   fromVal _ = Nothing
 
 instance FromVal a => FromVal (Maybe a) where
