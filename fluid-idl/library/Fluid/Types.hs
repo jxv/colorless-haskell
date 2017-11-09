@@ -67,7 +67,7 @@ instance FromJSON Version
 
 data RuntimeError
   = RuntimeError'UnparsableFormat
-  | RuntimeError'UnrecognizedCall
+  | RuntimeError'UnrecognizedCall TypeName
   | RuntimeError'VariableLimit
   | RuntimeError'LangServiceCallLimit Int
   | RuntimeError'LangLambdaLimit Int
@@ -94,7 +94,7 @@ data RuntimeError
 instance ToJSON RuntimeError where
   toJSON = \case
     RuntimeError'UnparsableFormat -> e "UnparsableFormat"
-    RuntimeError'UnrecognizedCall -> object [ "tag" .= String "UnrecognizedCall" ]
+    RuntimeError'UnrecognizedCall n -> object [ "tag" .= String "UnrecognizedCall", "name" .= n ]
     RuntimeError'VariableLimit -> e "VariableLimit"
     RuntimeError'LangExprLimit l -> object [ "tag" .= String "LangExprLimit", "limit" .= l ]
     RuntimeError'LangLambdaLimit l -> object [ "tag" .= String "LangLambdaLimit", "limit" .= l ]
@@ -124,7 +124,7 @@ instance FromJSON RuntimeError where
     tag <- o .: "tag"
     case tag :: Text of
       "UnparsableFormat" -> pure RuntimeError'UnparsableFormat
-      "UnrecognizedCall" -> pure RuntimeError'UnrecognizedCall
+      "UnrecognizedCall" -> RuntimeError'UnrecognizedCall <$> o .: "name"
       "VariableLimit" -> pure RuntimeError'VariableLimit
       "LangExprLimit" -> RuntimeError'LangExprLimit <$> o .: "limit"
       "LangLambdaLimit" -> RuntimeError'LangLambdaLimit <$> o .: "limit"

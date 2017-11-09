@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           fluid-idl
-version:        0.0.2
+version:        0.0.3
 synopsis:       Fluid | The Programmatic IDL
 description:    Fluid | The Programmatic IDL
 category:       Web
