@@ -31,8 +31,6 @@ import Data.Text.Conversions (toText)
 import Data.String (IsString(..))
 import Data.Scientific
 import Data.Proxy
-import Data.Int
-import Data.Word
 import GHC.Generics
 
 newtype Major = Major Int
@@ -273,35 +271,11 @@ instance HasType Bool where
 instance HasType Text where
   getType _ = "String"
 
-instance HasType Int8 where
-  getType _ = "I8"
-
-instance HasType Int16 where
-  getType _ = "I16"
-
-instance HasType Int32 where
-  getType _ = "I32"
-
-instance HasType Int64 where
-  getType _ = "I64"
-
-instance HasType Word8 where
-  getType _ = "U8"
-
-instance HasType Word16 where
-  getType _ = "U16"
-
-instance HasType Word32 where
-  getType _ = "U32"
-
-instance HasType Word64 where
-  getType _ = "U64"
-
-instance HasType Float where
-  getType _ = "F32"
+instance HasType Int where
+  getType _ = "Int"
 
 instance HasType Double where
-  getType _ = "F64"
+  getType _ = "Float"
 
 instance HasType a => HasType (Maybe a) where
   getType x = Type "Option" [getType (p x)] Nothing

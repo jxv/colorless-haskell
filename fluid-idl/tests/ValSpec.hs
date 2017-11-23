@@ -8,6 +8,7 @@ import Data.Text (Text)
 
 import Fluid.Types
 import Fluid.Val
+import Fluid.Prim
 
 spec :: Spec
 spec = do
@@ -17,15 +18,15 @@ spec = do
       (Just $ Val'ApiVal $ ApiVal'Enumeral $ Enumeral "None" Nothing)
     it "Struct" $ shouldBe
       (parseMaybe parseJSON $ object [ "x" .= True ])
-      (Just $ Val'ApiVal $ ApiVal'Struct $ Struct $ Map.fromList [("x", Val'Const $ Const'Bool True)] )
+      (Just $ Val'ApiVal $ ApiVal'Struct $ Struct $ Map.fromList [("x", Val'Prim $ Prim'Bool True)] )
     it "Struct" $ shouldBe
       (parseMaybe parseJSON $ object [ "x" .= object [ "tag" .= ("None" :: Text) ] ])
       (Just $ Val'ApiVal $ ApiVal'Struct $ Struct $ Map.fromList [("x", Val'ApiVal $ ApiVal'Enumeral $ Enumeral "None" Nothing)] )
   describe "parse types from val" $ do
     context "Option" $ do
       it "None" $ shouldBe
-        (fromVal $ Val'Const Const'Null)
+        (fromVal $ Val'Infer Infer'Null)
         (Just Nothing :: Maybe (Maybe Bool))
       it "Some" $ shouldBe
-        (fromVal $ Val'Const $ Const'Bool $ True)
+        (fromVal $ Val'Prim $ Prim'Bool $ True)
         (Just (Just True) :: Maybe (Maybe Bool))

@@ -26,15 +26,15 @@ spec = do
     context "Type" $ do
       it "string only" $ shouldBe
         (parseMaybe parseJSON (String "MyType"))
-        (Just $ Type "MyType" [])
+        (Just $ Type "MyType" [] Nothing)
 
       it "object with no param" $ shouldBe
         (parseMaybe parseJSON $ object ["n" .= String "MyType"])
-        (Just $ Type "MyType" [])
+        (Just $ Type "MyType" [] Nothing)
 
       it "object with param" $ shouldBe
         (parseMaybe parseJSON $ object ["n" .= String "MyType", "p" .= String "MyParam"])
-        (Just $ Type "MyType" ["MyParam"])
+        (Just $ Type "MyType" ["MyParam"] Nothing)
 
   describe "parse Ast" $ do
     it "Ref" $ shouldBe
@@ -61,8 +61,8 @@ spec = do
 
     context "Lambda" $ do
       it "simple" $ shouldBe
-        (parseAst $ Array $ V.fromList ["fn", Array $ V.fromList [ object [ "myVar" .= String "Int64" ] ], Bool True])
-        (Just $ Ast'Lambda $ Lambda [("myVar", Type "Int64" [])] (Ast'Const $ Const'Bool True))
+        (parseAst $ Array $ V.fromList ["fn", Array $ V.fromList [ object [ "myVar" .= String "Int" ] ], Bool True])
+        (Just $ Ast'Lambda $ Lambda [("myVar", Type "Int" [] Nothing)] (Ast'Const $ Const'Bool True))
 
     context "List" $ do
       it "simple" $ shouldBe

@@ -33,8 +33,6 @@ import Control.Applicative ((<|>))
 import Data.Text (Text)
 import Data.Aeson
 import Data.Map (Map)
-import Data.Int
-import Data.Word
 import GHC.Generics (Generic)
 
 import Fluid.Types
@@ -74,31 +72,7 @@ instance ToAst Bool where
 instance ToAst Text where
   toAst s = Ast'Const (Const'String s)
 
-instance ToAst Int8 where
-  toAst = num
-
-instance ToAst Int16 where
-  toAst = num
-
-instance ToAst Int32 where
-  toAst = num
-
-instance ToAst Int64 where
-  toAst = num
-
-instance ToAst Word8 where
-  toAst = num
-
-instance ToAst Word16 where
-  toAst = num
-
-instance ToAst Word32 where
-  toAst = num
-
-instance ToAst Word64 where
-  toAst = num
-
-instance ToAst Float where
+instance ToAst Int where
   toAst = num
 
 instance ToAst Double where

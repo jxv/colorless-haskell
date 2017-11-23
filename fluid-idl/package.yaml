@@ -1,5 +1,5 @@
 name: fluid-idl
-version: '0.0.4'
+version: '0.0.5'
 category: Web
 synopsis: Fluid | The Programmatic IDL
 description: Fluid | The Programmatic IDL
@@ -52,12 +52,11 @@ tests:
     dependencies:
     - aeson
     - base >= 4.7 && < 5
-    - fluid
+    - fluid-idl
     - containers
     - hspec
     - scientific
     - text
-    - tuple
     - vector
     ghc-options:
     - -rtsopts

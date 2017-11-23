@@ -23,8 +23,6 @@ import Data.Aeson.Types (parseMaybe)
 import Data.Map (Map)
 import Data.Scientific (toBoundedInteger, toRealFloat)
 import Data.Text (Text)
-import Data.Int
-import Data.Word
 import GHC.Generics (Generic)
 
 import Fluid.Types
@@ -115,35 +113,11 @@ instance ToVal Bool where
 instance ToVal Text where
   toVal s = Val'Prim $ Prim'String s
 
-instance ToVal Int8 where
-  toVal i = Val'Prim $ Prim'I8 i
-
-instance ToVal Int16 where
-  toVal i = Val'Prim $ Prim'I16 i
-
-instance ToVal Int32 where
-  toVal i = Val'Prim $ Prim'I32 i
-
-instance ToVal Int64 where
-  toVal i = Val'Prim $ Prim'I64 i
-
-instance ToVal Word8 where
-  toVal u = Val'Prim $ Prim'U8 u
-
-instance ToVal Word16 where
-  toVal u = Val'Prim $ Prim'U16 u
-
-instance ToVal Word32 where
-  toVal u = Val'Prim $ Prim'U32 u
-
-instance ToVal Word64 where
-  toVal u = Val'Prim $ Prim'U64 u
-
-instance ToVal Float where
-    toVal f = Val'Prim $ Prim'F32 f
+instance ToVal Int where
+  toVal i = Val'Prim $ Prim'Int i
 
 instance ToVal Double where
-    toVal d = Val'Prim $ Prim'F64 d
+    toVal d = Val'Prim $ Prim'Float d
 
 instance ToVal a => ToVal (Maybe a) where
   toVal Nothing = Val'Infer Infer'Null
@@ -296,61 +270,14 @@ instance FromVal Text where
   fromVal (Val'Prim (Prim'String s)) = Just s
   fromVal _ = Nothing
 
-instance FromVal Int8 where
+instance FromVal Int where
   fromVal = \case
-    Val'Prim (Prim'I8 i) -> Just i
+    Val'Prim (Prim'Int i) -> Just i
     Val'Infer (Infer'Number n) -> toBoundedInteger n
     _ -> Nothing
-
-instance FromVal Int16 where
-  fromVal = \case
-    Val'Prim (Prim'I16 i) -> Just i
-    Val'Infer (Infer'Number n) -> toBoundedInteger n
-    _ -> Nothing
-
-instance FromVal Int32 where
-  fromVal = \case
-    Val'Prim (Prim'I32 i) -> Just i
-    Val'Infer (Infer'Number n) -> toBoundedInteger n
-    _ -> Nothing
-
-instance FromVal Int64 where
-  fromVal = \case
-    Val'Prim (Prim'I64 i) -> Just i
-    Val'Infer (Infer'Number n) -> toBoundedInteger n
-    _ -> Nothing
-
-instance FromVal Word8 where
-  fromVal = \case
-    Val'Prim (Prim'U8 u) -> Just u
-    Val'Infer (Infer'Number n) -> toBoundedInteger n
-    _ -> Nothing
-
-instance FromVal Word16 where
-  fromVal = \case
-    Val'Prim (Prim'U16 u) -> Just u
-    Val'Infer (Infer'Number n) -> toBoundedInteger n
-    _ -> Nothing
-
-instance FromVal Word32 where
-  fromVal = \case
-    Val'Prim (Prim'U32 u) -> Just u
-    Val'Infer (Infer'Number n) -> toBoundedInteger n
-    _ -> Nothing
-
-instance FromVal Word64 where
-  fromVal = \case
-    Val'Prim (Prim'U64 u) -> Just u
-    Val'Infer (Infer'Number n) -> toBoundedInteger n
-    _ -> Nothing
-
-instance FromVal Float where
-  fromVal (Val'Prim (Prim'F32 f)) = Just f
-  fromVal (Val'Infer (Infer'Number n)) = Just $ toRealFloat n
-  fromVal _ = Nothing
 
 instance FromVal Double where
-  fromVal (Val'Prim (Prim'F64 f)) = Just f
+  fromVal (Val'Prim (Prim'Float f)) = Just f
   fromVal (Val'Infer (Infer'Number n)) = Just $ toRealFloat n
   fromVal _ = Nothing
 

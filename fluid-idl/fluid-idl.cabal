@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           fluid-idl
-version:        0.0.4
+version:        0.0.5
 synopsis:       Fluid | The Programmatic IDL
 description:    Fluid | The Programmatic IDL
 category:       Web
@@ -67,12 +67,11 @@ test-suite fluid-suite
   build-depends:
       aeson
     , base >= 4.7 && < 5
-    , fluid
+    , fluid-idl
     , containers
     , hspec
     , scientific
     , text
-    , tuple
     , vector
   other-modules:
       AstSpec

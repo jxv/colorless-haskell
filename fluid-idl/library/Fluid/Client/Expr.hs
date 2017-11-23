@@ -26,53 +26,21 @@ module Fluid.Client.Expr
   , noT
   , eq
   , neq
-  , addI8
-  , addI16
-  , addI32
-  , addI64
-  , addU8
-  , addU16
-  , addU32
-  , addU64
-  , subI8
-  , subI16
-  , subI32
-  , subI64
-  , subU8
-  , subU16
-  , subU32
-  , subU64
-  , mulI8
-  , mulI16
-  , mulI32
-  , mulI64
-  , mulU8
-  , mulU16
-  , mulU32
-  , mulU64
-  , divI8
-  , divI16
-  , divI32
-  , divI64
-  , divU8
-  , divU16
-  , divU32
-  , divU64
+  , addInt
+  , addFloat
+  , subInt
+  , subFloat
+  , mulInt
+  , mulFloat
+  , divInt
+  , divFloat
   , concaT
   --
   , unit
   , bool
   , string
-  , i8
-  , i16
-  , i32
-  , i64
-  , u8
-  , u16
-  , u32
-  , u64
-  , f32
-  , f64
+  , int
+  , float
   --
   , option
   , list
@@ -198,8 +166,6 @@ import qualified Data.Text as T
 import qualified Data.Map as Map
 import Data.Aeson (toJSON, Value)
 import Data.Proxy
-import Data.Word
-import Data.Int
 import Data.Map (Map)
 
 import qualified Fluid.Ast as Ast
@@ -356,101 +322,29 @@ eq x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "eq") [toAst x, toAst 
 neq :: (HasType a) => Expr a -> Expr a -> Expr Bool
 neq x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "neq") [toAst x, toAst y])
 
-addI8 :: Expr Int8 -> Expr Int8 -> Expr Int8
-addI8 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "addI8") [toAst x, toAst y])
+addInt :: Expr Int-> Expr Int -> Expr Int
+addInt x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "addInt") [toAst x, toAst y])
 
-addI16 :: Expr Int16 -> Expr Int16 -> Expr Int16
-addI16 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "addI16") [toAst x, toAst y])
+addFloat :: Expr Double -> Expr Double -> Expr Double
+addFloat x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "addFloat") [toAst x, toAst y])
 
-addI32 :: Expr Int32 -> Expr Int32 -> Expr Int32
-addI32 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "addI32") [toAst x, toAst y])
+subInt :: Expr Int -> Expr Int -> Expr Int
+subInt x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "subInt") [toAst x, toAst y])
 
-addI64 :: Expr Int64 -> Expr Int64 -> Expr Int64
-addI64 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "addI64") [toAst x, toAst y])
+subFloat :: Expr Double -> Expr Double -> Expr Double
+subFloat x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "subFloat") [toAst x, toAst y])
 
-addU8 :: Expr Word8 -> Expr Word8 -> Expr Word8
-addU8 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "addU8") [toAst x, toAst y])
+mulInt :: Expr Int -> Expr Int -> Expr Int
+mulInt x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "mulInt") [toAst x, toAst y])
 
-addU16 :: Expr Word16 -> Expr Word16 -> Expr Word16
-addU16 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "addU16") [toAst x, toAst y])
+mulFloat :: Expr Double -> Expr Double -> Expr Double
+mulFloat x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "mulFloat") [toAst x, toAst y])
 
-addU32 :: Expr Word32 -> Expr Word32 -> Expr Word32
-addU32 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "addU32") [toAst x, toAst y])
+divInt :: Expr Int -> Expr Int -> Expr Int
+divInt x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "divInt") [toAst x, toAst y])
 
-addU64 :: Expr Word64 -> Expr Word64 -> Expr Word64
-addU64 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "addU64") [toAst x, toAst y])
-
-subI8 :: Expr Int8 -> Expr Int8 -> Expr Int8
-subI8 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "subI8") [toAst x, toAst y])
-
-subI16 :: Expr Int16 -> Expr Int16 -> Expr Int16
-subI16 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "subI16") [toAst x, toAst y])
-
-subI32 :: Expr Int32 -> Expr Int32 -> Expr Int32
-subI32 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "subI32") [toAst x, toAst y])
-
-subI64 :: Expr Int64 -> Expr Int64 -> Expr Int64
-subI64 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "subI64") [toAst x, toAst y])
-
-subU8 :: Expr Word8 -> Expr Word8 -> Expr Word8
-subU8 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "subU8") [toAst x, toAst y])
-
-subU16 :: Expr Word16 -> Expr Word16 -> Expr Word16
-subU16 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "subU16") [toAst x, toAst y])
-
-subU32 :: Expr Word32 -> Expr Word32 -> Expr Word32
-subU32 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "subU32") [toAst x, toAst y])
-
-subU64 :: Expr Word64 -> Expr Word64 -> Expr Word64
-subU64 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "subU64") [toAst x, toAst y])
-
-mulI8 :: Expr Int8 -> Expr Int8 -> Expr Int8
-mulI8 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "mulI8") [toAst x, toAst y])
-
-mulI16 :: Expr Int16 -> Expr Int16 -> Expr Int16
-mulI16 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "mulI16") [toAst x, toAst y])
-
-mulI32 :: Expr Int32 -> Expr Int32 -> Expr Int32
-mulI32 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "mulI32") [toAst x, toAst y])
-
-mulI64 :: Expr Int64 -> Expr Int64 -> Expr Int64
-mulI64 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "mulI64") [toAst x, toAst y])
-
-mulU8 :: Expr Word8 -> Expr Word8 -> Expr Word8
-mulU8 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "mulU8") [toAst x, toAst y])
-
-mulU16 :: Expr Word16 -> Expr Word16 -> Expr Word16
-mulU16 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "mulU16") [toAst x, toAst y])
-
-mulU32 :: Expr Word32 -> Expr Word32 -> Expr Word32
-mulU32 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "mulU32") [toAst x, toAst y])
-
-mulU64 :: Expr Word64 -> Expr Word64 -> Expr Word64
-mulU64 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "mulU64") [toAst x, toAst y])
-
-divI8 :: Expr Int8 -> Expr Int8 -> Expr Int8
-divI8 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "divI8") [toAst x, toAst y])
-
-divI16 :: Expr Int16 -> Expr Int16 -> Expr Int16
-divI16 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "divI16") [toAst x, toAst y])
-
-divI32 :: Expr Int32 -> Expr Int32 -> Expr Int32
-divI32 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "divI32") [toAst x, toAst y])
-
-divI64 :: Expr Int64 -> Expr Int64 -> Expr Int64
-divI64 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "divI64") [toAst x, toAst y])
-
-divU8 :: Expr Word8 -> Expr Word8 -> Expr Word8
-divU8 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "divU8") [toAst x, toAst y])
-
-divU16 :: Expr Word16 -> Expr Word16 -> Expr Word16
-divU16 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "divU16") [toAst x, toAst y])
-
-divU32 :: Expr Word32 -> Expr Word32 -> Expr Word32
-divU32 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "divU32") [toAst x, toAst y])
-
-divU64 :: Expr Word64 -> Expr Word64 -> Expr Word64
-divU64 x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "divU64") [toAst x, toAst y])
+divFloat :: Expr Double -> Expr Double -> Expr Double
+divFloat x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "divFloat") [toAst x, toAst y])
 
 concaT :: Expr T.Text -> Expr T.Text -> Expr T.Text
 concaT x y = Expr (Ast'FnCall $ Ast.FnCall (Ast'Ref $ Ast.Ref "concat") [toAst x, toAst y])
@@ -469,23 +363,7 @@ instance ToExpr Bool
 
 instance ToExpr T.Text
 
-instance ToExpr Int8
-
-instance ToExpr Int16
-
-instance ToExpr Int32
-
-instance ToExpr Int64
-
-instance ToExpr Word8
-
-instance ToExpr Word16
-
-instance ToExpr Word32
-
-instance ToExpr Word64
-
-instance ToExpr Float
+instance ToExpr Int
 
 instance ToExpr Double
 
@@ -500,35 +378,11 @@ bool = ex
 string :: T.Text -> Expr T.Text
 string = ex
 
-i8 :: Int8 -> Expr Int8
-i8 = ex
+int :: Int -> Expr Int
+int = ex
 
-i16 :: Int16 -> Expr Int16
-i16 = ex
-
-i32 :: Int32 -> Expr Int32
-i32 = ex
-
-i64 :: Int64 -> Expr Int64
-i64 = ex
-
-u8 :: Word8 -> Expr Word8
-u8 = ex
-
-u16 :: Word16 -> Expr Word16
-u16 = ex
-
-u32 :: Word32 -> Expr Word32
-u32 = ex
-
-u64 :: Word64 -> Expr Word64
-u64 = ex
-
-f32 :: Float -> Expr Float
-f32 = ex
-
-f64 :: Double -> Expr Double
-f64 = ex
+float :: Double -> Expr Double
+float = ex
 
 --
 

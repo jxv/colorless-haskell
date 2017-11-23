@@ -1,15 +1,14 @@
 module ClientSpec (spec) where
 
 import Test.Hspec
-import Data.Int
 
 import Fluid.Client
 
-_helloWorld :: Expr (Int32, Int32)
+_helloWorld :: Expr (Int, Int)
 _helloWorld = dO $ do
-  x <- def "x" (i32 0)
-  f <- defn "f" (fn2 "a" "b" add)
-  stmt $ tuple2 x (f -< (x, i32 10))
+  x <- def "x" (int 0)
+  f <- defn "f" (fn2 "a" "b" addInt)
+  stmt $ tuple2 x (f -< (x, int 10))
 
 spec :: Spec
 spec = do
