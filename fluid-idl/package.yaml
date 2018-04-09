@@ -1,8 +1,8 @@
 name: fluid-idl
-version: '0.0.5'
+version: '0.0.6'
 category: Web
-synopsis: Fluid | The Programmatic IDL
-description: Fluid | The Programmatic IDL
+synopsis: Code-generated, Auto-versioned, & Smart Web APIs
+description: Code-generated, Auto-versioned, & Smart Web APIs
 maintainer: Joe Vargas
 license: BSD3
 extra-source-files:
@@ -32,6 +32,7 @@ library:
   - aeson
   - base >= 4.7 && < 5
   - bytestring
+  - blaze-markup
   - containers
   - errors
   - exceptions

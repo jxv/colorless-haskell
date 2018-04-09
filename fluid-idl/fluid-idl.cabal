@@ -1,11 +1,13 @@
--- This file has been generated from package.yaml by hpack version 0.17.1.
+-- This file has been generated from package.yaml by hpack version 0.20.0.
 --
 -- see: https://github.com/sol/hpack
+--
+-- hash: e2126e824f03606560a73bf27fee809d019e62c2592a9c4a529bbefb09183d78
 
 name:           fluid-idl
-version:        0.0.5
-synopsis:       Fluid | The Programmatic IDL
-description:    Fluid | The Programmatic IDL
+version:        0.0.6
+synopsis:       Code-generated, Auto-versioned, & Smart Web APIs
+description:    Code-generated, Auto-versioned, & Smart Web APIs
 category:       Web
 maintainer:     Joe Vargas
 license:        BSD3
@@ -24,7 +26,8 @@ library
   ghc-options: -Wall
   build-depends:
       aeson
-    , base >= 4.7 && < 5
+    , base >=4.7 && <5
+    , blaze-markup
     , bytestring
     , containers
     , errors
@@ -34,8 +37,8 @@ library
     , monad-logger
     , mtl
     , random
-    , scientific
     , safe-exceptions
+    , scientific
     , text
     , text-conversions
     , unordered-containers
@@ -55,6 +58,8 @@ library
       Fluid.ServiceThrower
       Fluid.Types
       Fluid.Val
+  other-modules:
+      Paths_fluid_idl
   default-language: Haskell2010
 
 test-suite fluid-suite
@@ -66,9 +71,9 @@ test-suite fluid-suite
   ghc-options: -Wall -rtsopts -threaded -with-rtsopts=-N
   build-depends:
       aeson
-    , base >= 4.7 && < 5
-    , fluid-idl
+    , base >=4.7 && <5
     , containers
+    , fluid-idl
     , hspec
     , scientific
     , text
@@ -78,4 +83,5 @@ test-suite fluid-suite
       ClientSpec
       ExprSpec
       ValSpec
+      Paths_fluid_idl
   default-language: Haskell2010
